@@ -6,18 +6,15 @@ import time
 import threading
 import ollama
 import os
-from dotenv import load_dotenv
 
 # =========================================================
 # CARGA DE ENTORNO
 # =========================================================
 
-load_dotenv()
-
-BUTLER_URL = os.getenv("BUTLER_URL")
-MODEL = os.getenv("MODEL")
-ALIAS = os.getenv("ALIAS")
-SLEEP_SECONDS = int(os.getenv("SLEEP_SECONDS", 15))
+BUTLER_URL = os.getenv("FDI_PLN__BUTLER_ADDRESS")
+MODEL = os.getenv("FDI_PLN__MODEL", "mistral")
+ALIAS = os.getenv("FDI_PLN__ALIAS", "fdi-pln-2612")
+SLEEP_SECONDS = int(os.getenv("FDI_PLN__SLEEP_SECONDS", 15))
 
 # =========================================================
 # APP
