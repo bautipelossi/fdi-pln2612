@@ -1,9 +1,7 @@
-from fastapi import FastAPI
 from pydantic import BaseModel
 import requests
 import json
 import time
-import threading
 import ollama
 import os
 
@@ -16,11 +14,6 @@ MODEL = os.getenv("FDI_PLN__MODEL", "mistral")
 ALIAS = os.getenv("FDI_PLN__ALIAS", "fdi-pln-2612")
 SLEEP_SECONDS = int(os.getenv("FDI_PLN__SLEEP_SECONDS", 15))
 
-# =========================================================
-# APP
-# =========================================================
-
-app = FastAPI(title="Agente Autónomo PLN")
 
 # =========================================================
 # MODELO DE ESTADO
@@ -188,17 +181,10 @@ def ciclo_autonomo():
 
         time.sleep(SLEEP_SECONDS)
 
-# =========================================================
-# FASTAPI
-# =========================================================
+def main():
+    print("AGENTE INICIADO:", ALIAS)
+    ciclo_autonomo()
 
-@app.get("/")
-def healthcheck():
-    return {
-        "status": "activo",
-        "alias": ALIAS
-    }
 
-@app.on_event("startup")
-def iniciar_agente():
-    threading.Thread(target=ciclo_autonomo, daemon=True).start()
+if __name__ == "__main__":
+    main()
