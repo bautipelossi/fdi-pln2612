@@ -1,6 +1,6 @@
 # Procesamiento de Lenguaje Natural 
  Facultad de Informática | Universidad Complutense de Madrid
 
-## Equipo
+## Autor
 - Bautista Pelossi Schweizer
 
