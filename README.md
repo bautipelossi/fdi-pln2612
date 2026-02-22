@@ -9,10 +9,8 @@ Facultad de Informática | Universidad Complutense de Madrid
 ## Índice
 1. [Descripción](#descripcion)
 2. [Estructura del repositorio](#estructura)
-3. [Práctica 1 — Agente Butler](#p1)
-4. [Práctica 2 — Audios / Pangramas](#p2)
 5. [Notas importantes](#notas)
-6. [Autor](#autor)
+6. [Autores](#autor)
 
 ---
 
@@ -24,10 +22,11 @@ Este repositorio organiza de forma **modular** las prácticas de PLN:
 - **Práctica 1 (P1):** Implementación de un **agente autónomo** que participa en un mercado de trueque coordinado por un Butler. El agente debe negociar, responder ofertas, contraofertar y tomar decisiones estratégicas (opcionalmente con un LLM).
 - **Práctica 2 (P2):** Trabajo con **audios** (pangramas), edición y entrega de resultados.
 
+Cada práctica incluye su propio README.md con detalles sobre las actividades desarrolladas.
 ---
 
 <a id="estructura"></a>
-## 🗂️ Estructura del repositorio
+## Estructura del repositorio
 
 ```text
 fdi-pln2612/
@@ -40,7 +39,7 @@ fdi-pln2612/
 │
 ├── p2/                           # Práctica 2: Audios / Pangramas
 │   ├── data/
-│   │   ├── raw/                  # audios originales (sin edición)
-│   │   └── processed/            # audios finales (editados / sintéticos)
+│   │   ├── crudo/                  # audios originales (sin edición)
+│   │   └── procesado/            # audios finales (editados / sintéticos)
 ├── .gitignore
 └── README.md
