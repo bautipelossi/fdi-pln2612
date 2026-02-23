@@ -9,6 +9,12 @@ import re
 import random
 from typing import Any
 
+try:
+    import ollama
+    OLLAMA_AVAILABLE = True
+except ImportError:
+    OLLAMA_AVAILABLE = False
+
 
 # =========================================================
 # CONFIG / ENTORNO
@@ -37,6 +43,11 @@ CLEAN_INBOX = os.getenv("FDI_PLN__CLEAN_INBOX", "1") == "1"
 MAX_MAILS = int(os.getenv("FDI_PLN__MAX_MAILS", "20"))
 
 DEBUG = os.getenv("FDI_PLN__DEBUG", "1") == "1"
+
+# LLM
+LLM_MODEL = os.getenv("FDI_PLN__LLM_MODEL", "llama3.2:3b")
+USE_LLM = os.getenv("FDI_PLN__USE_LLM", "1") == "1"
+LLM_TIMEOUT = float(os.getenv("FDI_PLN__LLM_TIMEOUT", "30"))
 
 if not BUTLER_URL:
     raise RuntimeError("FDI_PLN__BUTLER_ADDRESS no está definida (ej: http://127.0.0.1:8000)")
@@ -365,10 +376,138 @@ def mark_offer_sent(dest: str) -> None:
 
 
 # =========================================================
+# LLM - Decisiones Inteligentes
+# =========================================================
+
+SYSTEM_PROMPT = """Eres un agente de comercio inteligente en una simulación multiagente.
+Tu objetivo es conseguir los recursos que te faltan intercambiando con otros agentes.
+
+REGLAS:
+1. Solo puedes ofrecer recursos que tengas en EXCESO (por encima de tu objetivo)
+2. Debes pedir recursos que te FALTAN para cumplir tu objetivo
+3. Un intercambio justo es 1:1 (1 recurso por 1 recurso)
+4. No puedes intercambiar el mismo recurso que pides
+5. Prioriza aceptar ofertas que te beneficien antes de hacer nuevas ofertas
+
+Respuestas válidas (JSON exacto, sin markdown):
+- Esperar: {"tipo": "esperar"}
+- Ofertar: {"tipo": "ofertar", "dest": "alias_destino", "need_recurso": "X", "need_cantidad": 1, "offer_recurso": "Y", "offer_cantidad": 1}
+- Aceptar: {"tipo": "aceptar", "mensaje_id": "ID_DEL_MENSAJE"}
+
+Responde SOLO con el JSON de la acción, sin explicaciones."""
+
+
+def build_user_prompt(estado: InfoPuesto, gente: list[str], mails_by_id: dict[str, dict[str, Any]]) -> str:
+    """Construye el prompt con el contexto actual de la simulación."""
+    f = faltantes(estado)
+    exc = excedentes(estado)
+    otros = [a for a in gente if a != ALIAS]
+    
+    # Formatear ofertas recibidas
+    ofertas_recibidas = []
+    for mid, mail in mails_by_id.items():
+        remi = (mail.get("remi") or "").strip()
+        cuerpo = (mail.get("cuerpo") or "").strip()
+        if remi and remi != ALIAS and remi.lower() != "sistema":
+            parsed = parse_offer_from_text(cuerpo)
+            if parsed:
+                quiero, ofrezco = parsed
+                ofertas_recibidas.append({
+                    "id": mid,
+                    "de": remi,
+                    "pide": quiero,
+                    "ofrece": ofrezco,
+                    "puedo_dar": all(can_give(estado, k, v) for k, v in quiero.items())
+                })
+    
+    prompt = f"""ESTADO ACTUAL:
+- Mis recursos: {json.dumps(estado.Recursos, ensure_ascii=False)}
+- Mi objetivo: {json.dumps(estado.Objetivo, ensure_ascii=False)}
+- Me faltan: {json.dumps(f, ensure_ascii=False) if f else "nada (objetivo cumplido)"}
+- Tengo de sobra: {json.dumps(exc, ensure_ascii=False) if exc else "nada"}
+
+AGENTES DISPONIBLES: {json.dumps(otros, ensure_ascii=False) if otros else "ninguno"}
+
+OFERTAS RECIBIDAS:
+"""
+    
+    if ofertas_recibidas:
+        for o in ofertas_recibidas:
+            prompt += f"- ID={o['id']} de {o['de']}: pide {o['pide']}, ofrece {o['ofrece']}. ¿Puedo dar? {o['puedo_dar']}\n"
+    else:
+        prompt += "- Ninguna\n"
+    
+    prompt += "\n¿Qué acción debo tomar? Responde SOLO con JSON."
+    return prompt
+
+
+def decidir_con_llm(estado: InfoPuesto, gente: list[str], mails_by_id: dict[str, dict[str, Any]]) -> Decision | None:
+    """Usa el LLM para tomar una decisión inteligente."""
+    if not OLLAMA_AVAILABLE or not USE_LLM:
+        return None
+    
+    try:
+        user_prompt = build_user_prompt(estado, gente, mails_by_id)
+        
+        if DEBUG:
+            print("[LLM] Consultando modelo...")
+        
+        response = ollama.chat(
+            model=LLM_MODEL,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt}
+            ],
+            options={"temperature": 0.3, "num_predict": 150}
+        )
+        
+        content = response["message"]["content"].strip()
+        
+        # Limpiar markdown si el modelo lo añade
+        if content.startswith("```"):
+            content = re.sub(r"```(?:json)?\s*", "", content)
+            content = content.replace("```", "").strip()
+        
+        if DEBUG:
+            print(f"[LLM] Respuesta: {content}")
+        
+        accion = json.loads(content)
+        
+        # Validar la acción
+        tipo = accion.get("tipo", "")
+        if tipo not in ("esperar", "ofertar", "aceptar"):
+            return None
+        
+        # Validaciones adicionales
+        if tipo == "ofertar":
+            dest = accion.get("dest", "")
+            if not dest or dest == ALIAS or not can_send_offer_now(dest):
+                return None
+            if not can_give(estado, accion.get("offer_recurso", ""), int(accion.get("offer_cantidad", 0))):
+                return None
+        
+        if tipo == "aceptar":
+            mid = accion.get("mensaje_id", "")
+            if mid not in mails_by_id:
+                return None
+        
+        return Decision(
+            razonamiento=f"[LLM] Decidió: {tipo}",
+            accion=accion
+        )
+        
+    except Exception as e:
+        if DEBUG:
+            print(f"[LLM] Error: {e}")
+        return None
+
+
+# =========================================================
 # Decidir + Ejecutar
 # =========================================================
 
 def decidir_fallback(estado: InfoPuesto, gente: list[str], mails_by_id: dict[str, dict[str, Any]]) -> Decision:
+    """Heurísticas de respaldo cuando el LLM no está disponible."""
     f = faltantes(estado)
     exc = excedentes(estado)
 
@@ -554,7 +693,11 @@ def ciclo_autonomo() -> None:
 
             procesar_mails_automaticos(mails_by_id)
 
-            dec = decidir_fallback(estado, gente_cache, mails_by_id)
+            # Primero intentar con LLM, si falla usar heurísticas
+            dec = decidir_con_llm(estado, gente_cache, mails_by_id)
+            if dec is None:
+                dec = decidir_fallback(estado, gente_cache, mails_by_id)
+            
             ejecutar_decision(dec, estado, mails_by_id)
 
         except Exception as e:
