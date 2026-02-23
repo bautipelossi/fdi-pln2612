@@ -11,6 +11,7 @@ from typing import Any
 
 try:
     import ollama
+
     OLLAMA_AVAILABLE = True
 except ImportError:
     OLLAMA_AVAILABLE = False
@@ -50,7 +51,9 @@ USE_LLM = os.getenv("FDI_PLN__USE_LLM", "1") == "1"
 LLM_TIMEOUT = float(os.getenv("FDI_PLN__LLM_TIMEOUT", "30"))
 
 if not BUTLER_URL:
-    raise RuntimeError("FDI_PLN__BUTLER_ADDRESS no está definida (ej: http://127.0.0.1:8000)")
+    raise RuntimeError(
+        "FDI_PLN__BUTLER_ADDRESS no está definida (ej: http://127.0.0.1:8000)"
+    )
 
 HEADERS = {"Connection": "close"}  # evita keep-alive y baja 10053/10054
 
@@ -69,6 +72,7 @@ estado_cache: dict[str, Any] = {"recursos": {}}
 # MODELOS
 # =========================================================
 
+
 class InfoPuesto(BaseModel):
     Alias: str
     Recursos: dict[str, int] = Field(default_factory=dict)
@@ -85,11 +89,14 @@ class Decision(BaseModel):
 # HTTP robusto (retry + close)
 # =========================================================
 
+
 def _url(path: str) -> str:
     return f"{BUTLER_URL.rstrip('/')}{path}"
 
 
-def request_with_retry(method: str, path: str, *, params: dict[str, Any] | None = None, payload: Any = None) -> requests.Response:
+def request_with_retry(
+    method: str, path: str, *, params: dict[str, Any] | None = None, payload: Any = None
+) -> requests.Response:
     last_exc: Exception | None = None
     for attempt in range(3):
         try:
@@ -103,7 +110,7 @@ def request_with_retry(method: str, path: str, *, params: dict[str, Any] | None 
             )
         except requests.exceptions.RequestException as e:
             last_exc = e
-            time.sleep(0.25 * (2 ** attempt))
+            time.sleep(0.25 * (2**attempt))
     raise last_exc  # type: ignore
 
 
@@ -111,7 +118,9 @@ def http_get(path: str, params: dict[str, Any] | None = None) -> requests.Respon
     return request_with_retry("GET", path, params=params)
 
 
-def http_post(path: str, payload: Any, params: dict[str, Any] | None = None) -> requests.Response:
+def http_post(
+    path: str, payload: Any, params: dict[str, Any] | None = None
+) -> requests.Response:
     return request_with_retry("POST", path, params=params, payload=payload)
 
 
@@ -122,6 +131,7 @@ def http_delete(path: str, params: dict[str, Any] | None = None) -> requests.Res
 # =========================================================
 # Butler API
 # =========================================================
+
 
 def set_alias_in_butler() -> str:
     base = ALIAS
@@ -136,7 +146,7 @@ def set_alias_in_butler() -> str:
         if DEBUG:
             print(f"[WARN] No pude setear alias {candidate}: {r.status_code} {r.text}")
 
-    candidate = f"{base}-{random.randint(1000,9999)}"
+    candidate = f"{base}-{random.randint(1000, 9999)}"
     r = http_post(f"/alias/{candidate}", payload={})
     if r.status_code == 200:
         print(f"[OK] Alias fijado en Butler: {candidate}")
@@ -175,7 +185,7 @@ def enviar_carta(dest: str, asunto: str, cuerpo: str) -> bool:
         BAD_DEST_UNTIL[dest] = time.time() + BAD_DEST_SECONDS
         return False
 
-    ok = (r.status_code == 200)
+    ok = r.status_code == 200
     rid = None
     try:
         rid = r.json().get("id")
@@ -199,7 +209,7 @@ def borrar_mail(mail_id: str) -> None:
 
 def enviar_paquete(dest: str, paquete: dict[str, int]) -> bool:
     r = http_post(f"/paquete/{dest}", payload=paquete, params={"agente": ALIAS})
-    ok = (r.status_code == 200)
+    ok = r.status_code == 200
     if DEBUG:
         print(f"[PAQUETE] -> {dest} {paquete} status={r.status_code}")
         if not ok:
@@ -228,16 +238,33 @@ OFFER_RE = re.compile(
 )
 
 
-def build_offer_body(need_item: str, need_qty: int, offer_item: str, offer_qty: int) -> str:
+def build_offer_body(
+    need_item: str, need_qty: int, offer_item: str, offer_qty: int
+) -> str:
     line1 = f"[OFERTA_V1] quiero={json.dumps({need_item: need_qty}, ensure_ascii=False)} ofrezco={json.dumps({offer_item: offer_qty}, ensure_ascii=False)}"
     line2 = f"Necesito {need_qty} {need_item} y ofrezco {offer_qty} {offer_item}."
     return line1 + "\n" + line2
 
 
-def build_accept_body(give_to_other: dict[str, int], expect_from_other: dict[str, int]) -> str:
+def _extract_first_item(d: dict[str, int]) -> tuple[str, int] | None:
+    """Extrae el primer item de un dict. Retorna None si está vacío o tiene >1 item."""
+    items = list(d.items())
+    if len(items) != 1:
+        if DEBUG and len(items) > 1:
+            print(f"[WARN] Oferta con múltiples items ({len(items)}), ignorando.")
+        return None
+    return items[0]
+
+
+def build_accept_body(
+    give_to_other: dict[str, int], expect_from_other: dict[str, int]
+) -> str:
     line1 = f"[ACEPTO_V1] te_envio={json.dumps(give_to_other, ensure_ascii=False)} espero={json.dumps(expect_from_other, ensure_ascii=False)}"
-    (gk, gv), = list(give_to_other.items())
-    (ek, ev), = list(expect_from_other.items())
+    # Tomar primer item de cada dict para el texto legible
+    give_items = list(give_to_other.items())
+    expect_items = list(expect_from_other.items())
+    gk, gv = give_items[0] if give_items else ("", 0)
+    ek, ev = expect_items[0] if expect_items else ("", 0)
     line2 = f"Acepto tu oferta. Te envié {gv} {gk}. Enviame {ev} {ek}."
     return line1 + "\n" + line2
 
@@ -284,6 +311,7 @@ def parse_accept_from_text(texto: str) -> tuple[dict[str, int], dict[str, int]] 
 # Heurísticas
 # =========================================================
 
+
 def faltantes(estado: InfoPuesto) -> dict[str, int]:
     f = {}
     for r, obj in (estado.Objetivo or {}).items():
@@ -321,6 +349,7 @@ def can_give(estado: InfoPuesto, item: str, qty: int) -> bool:
 # Automatismos: responder ACEPTO_V1
 # =========================================================
 
+
 def procesar_mails_automaticos(mails_by_id: dict[str, dict[str, Any]]) -> None:
     for mid, mail in list(mails_by_id.items()):
         remi = (mail.get("remi") or "").strip()
@@ -346,7 +375,9 @@ def procesar_mails_automaticos(mails_by_id: dict[str, dict[str, Any]]) -> None:
                 enviar_paquete(remi, {k: int(v) for k, v in espero.items()})
                 enviar_carta(remi, "Envío", f"Listo. Te envié {espero}.")
             else:
-                enviar_carta(remi, "No puedo", f"No tengo suficiente para enviarte {espero}.")
+                enviar_carta(
+                    remi, "No puedo", f"No tengo suficiente para enviarte {espero}."
+                )
 
             if CLEAN_INBOX:
                 borrar_mail(mid)
@@ -356,6 +387,7 @@ def procesar_mails_automaticos(mails_by_id: dict[str, dict[str, Any]]) -> None:
 # =========================================================
 # Anti-spam
 # =========================================================
+
 
 def can_send_offer_now(dest: str) -> bool:
     global LAST_OFFER_TS_GLOBAL
@@ -398,12 +430,14 @@ Respuestas válidas (JSON exacto, sin explicaciones):
 Responde SOLO con el JSON."""
 
 
-def build_user_prompt(estado: InfoPuesto, gente: list[str], mails_by_id: dict[str, dict[str, Any]]) -> str:
+def build_user_prompt(
+    estado: InfoPuesto, gente: list[str], mails_by_id: dict[str, dict[str, Any]]
+) -> str:
     """Construye el prompt con el contexto actual de la simulación."""
     f = faltantes(estado)
     exc = excedentes(estado)
     otros = [a for a in gente if a != ALIAS]
-    
+
     # Formatear ofertas recibidas
     ofertas_recibidas = []
     for mid, mail in mails_by_id.items():
@@ -413,14 +447,18 @@ def build_user_prompt(estado: InfoPuesto, gente: list[str], mails_by_id: dict[st
             parsed = parse_offer_from_text(cuerpo)
             if parsed:
                 quiero, ofrezco = parsed
-                ofertas_recibidas.append({
-                    "id": mid,
-                    "de": remi,
-                    "pide": quiero,
-                    "ofrece": ofrezco,
-                    "puedo_dar": all(can_give(estado, k, v) for k, v in quiero.items())
-                })
-    
+                ofertas_recibidas.append(
+                    {
+                        "id": mid,
+                        "de": remi,
+                        "pide": quiero,
+                        "ofrece": ofrezco,
+                        "puedo_dar": all(
+                            can_give(estado, k, v) for k, v in quiero.items()
+                        ),
+                    }
+                )
+
     prompt = f"""ESTADO ACTUAL:
 - Mis recursos: {json.dumps(estado.Recursos, ensure_ascii=False)}
 - Mi objetivo: {json.dumps(estado.Objetivo, ensure_ascii=False)}
@@ -431,85 +469,108 @@ AGENTES DISPONIBLES para ofertar: {json.dumps(otros, ensure_ascii=False) if otro
 
 OFERTAS RECIBIDAS:
 """
-    
+
     if ofertas_recibidas:
         for o in ofertas_recibidas:
-            me_sirve = any(k in f for k in o['ofrece'].keys()) if f else False
+            me_sirve = any(k in f for k in o["ofrece"].keys()) if f else False
             prompt += f"- ID={o['id']} de {o['de']}: pide {o['pide']}, ofrece {o['ofrece']}. ¿Puedo dar? {o['puedo_dar']}. ¿Me sirve? {me_sirve}\n"
     else:
         prompt += "- Ninguna\n"
-    
+
     # Añadir sugerencia explícita con variación
     if f and exc and otros:
         import random as _rnd
+
         need_list = list(f.keys())
         off_list = list(exc.keys())
         need_sug = _rnd.choice(need_list)
         off_sug = _rnd.choice(off_list)
         dest_sug = _rnd.choice(otros)
-        prompt += f"\nRECURSOS QUE NECESITAS: {need_list}. Elige uno diferente cada vez."
+        prompt += (
+            f"\nRECURSOS QUE NECESITAS: {need_list}. Elige uno diferente cada vez."
+        )
         prompt += f"\nRECURSOS QUE PUEDES OFRECER: {off_list}."
         prompt += f"\nEJEMPLO: Pide {need_sug} y ofrece {off_sug} a {dest_sug}."
-    
+
     prompt += "\n\n¿Qué acción tomo? JSON:"
     return prompt
 
 
-def decidir_con_llm(estado: InfoPuesto, gente: list[str], mails_by_id: dict[str, dict[str, Any]]) -> Decision | None:
+def decidir_con_llm(
+    estado: InfoPuesto, gente: list[str], mails_by_id: dict[str, dict[str, Any]]
+) -> Decision | None:
     """Usa el LLM para tomar una decisión inteligente."""
     if not OLLAMA_AVAILABLE or not USE_LLM:
         return None
-    
+
     try:
         user_prompt = build_user_prompt(estado, gente, mails_by_id)
-        
+
         if DEBUG:
             print("[LLM] Consultando modelo...")
-        
-        response = ollama.chat(
-            model=LLM_MODEL,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt}
-            ],
-            options={"temperature": 0.3, "num_predict": 150}
-        )
-        
+
+        # Ejecutar LLM con timeout real usando thread
+        from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
+
+        def _call_ollama():
+            return ollama.chat(
+                model=LLM_MODEL,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": user_prompt},
+                ],
+                options={"temperature": 0.3, "num_predict": 150},
+            )
+
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(_call_ollama)
+            try:
+                response = future.result(timeout=LLM_TIMEOUT)
+            except FuturesTimeout:
+                if DEBUG:
+                    print(f"[LLM] Timeout después de {LLM_TIMEOUT}s")
+                return None
+
         content = response["message"]["content"].strip()
-        
-        # Limpiar markdown si el modelo lo añade
-        if content.startswith("```"):
+
+        # Extracción robusta del JSON: buscar primer bloque {...}
+        json_match = re.search(r"\{[^{}]*\}", content)
+        if json_match:
+            content = json_match.group(0)
+        else:
+            # Fallback: limpiar markdown
             content = re.sub(r"```(?:json)?\s*", "", content)
             content = content.replace("```", "").strip()
-        
+
         if DEBUG:
             print(f"[LLM] Respuesta: {content}")
-        
+
         accion = json.loads(content)
-        
+
         # Validar la acción
         tipo = accion.get("tipo", "")
         if tipo not in ("esperar", "ofertar", "aceptar"):
             return None
-        
+
         # Validaciones adicionales
         if tipo == "ofertar":
             dest = accion.get("dest", "")
             if not dest or dest == ALIAS or not can_send_offer_now(dest):
                 return None
-            if not can_give(estado, accion.get("offer_recurso", ""), int(accion.get("offer_cantidad", 0))):
+            if not can_give(
+                estado,
+                accion.get("offer_recurso", ""),
+                int(accion.get("offer_cantidad", 0)),
+            ):
                 return None
-        
+
         if tipo == "aceptar":
             mid = accion.get("mensaje_id", "")
             if mid not in mails_by_id:
                 return None
-        
-        return Decision(
-            razonamiento=f"[LLM] Decidió: {tipo}",
-            accion=accion
-        )
-        
+
+        return Decision(razonamiento=f"[LLM] Decidió: {tipo}", accion=accion)
+
     except Exception as e:
         if DEBUG:
             print(f"[LLM] Error: {e}")
@@ -520,7 +581,10 @@ def decidir_con_llm(estado: InfoPuesto, gente: list[str], mails_by_id: dict[str,
 # Decidir + Ejecutar
 # =========================================================
 
-def decidir_fallback(estado: InfoPuesto, gente: list[str], mails_by_id: dict[str, dict[str, Any]]) -> Decision:
+
+def decidir_fallback(
+    estado: InfoPuesto, gente: list[str], mails_by_id: dict[str, dict[str, Any]]
+) -> Decision:
     """Heurísticas de respaldo cuando el LLM no está disponible."""
     f = faltantes(estado)
     exc = excedentes(estado)
@@ -544,14 +608,24 @@ def decidir_fallback(estado: InfoPuesto, gente: list[str], mails_by_id: dict[str
             continue
 
         quiero, ofrezco = parsed
-        (need_item, need_qty), = list(quiero.items())
-        (offer_item, offer_qty), = list(ofrezco.items())
+        # Validar que sea exactamente 1 item por lado
+        need_pair = _extract_first_item(quiero)
+        offer_pair = _extract_first_item(ofrezco)
+        if not need_pair or not offer_pair:
+            if CLEAN_INBOX:
+                borrar_mail(mid)
+                mails_by_id.pop(mid, None)
+            continue
+        need_item, need_qty = need_pair
+        offer_item, offer_qty = offer_pair
         need_qty = int(need_qty)
         offer_qty = int(offer_qty)
 
         if not can_give(estado, need_item, need_qty):
             if DEBUG:
-                print(f"[SKIP] No puedo dar {need_qty} {need_item} (ALLOW_BREAK_OBJECTIVE={ALLOW_BREAK_OBJECTIVE}).")
+                print(
+                    f"[SKIP] No puedo dar {need_qty} {need_item} (ALLOW_BREAK_OBJECTIVE={ALLOW_BREAK_OBJECTIVE})."
+                )
             if CLEAN_INBOX:
                 borrar_mail(mid)
                 mails_by_id.pop(mid, None)
@@ -571,7 +645,9 @@ def decidir_fallback(estado: InfoPuesto, gente: list[str], mails_by_id: dict[str
     # 2) ofertar proactivo
     otros = [a for a in gente if a != ALIAS]
     if not otros:
-        return Decision(razonamiento="No hay otros agentes conectados.", accion={"tipo": "esperar"})
+        return Decision(
+            razonamiento="No hay otros agentes conectados.", accion={"tipo": "esperar"}
+        )
 
     random.shuffle(otros)
     dest = None
@@ -580,7 +656,10 @@ def decidir_fallback(estado: InfoPuesto, gente: list[str], mails_by_id: dict[str
             dest = cand
             break
     if dest is None:
-        return Decision(razonamiento="Cooldown/global o destinos malos -> espero.", accion={"tipo": "esperar"})
+        return Decision(
+            razonamiento="Cooldown/global o destinos malos -> espero.",
+            accion={"tipo": "esperar"},
+        )
 
     # elegir qué pedir y qué ofrecer (ofrecer excedente si existe; si no, algo que pueda dar)
     if f:
@@ -593,12 +672,17 @@ def decidir_fallback(estado: InfoPuesto, gente: list[str], mails_by_id: dict[str
         offer_item = max(exc, key=lambda k: exc[k])
     else:
         # cualquier recurso que tenga >=1 y que pueda dar
-        cand_items = [k for k, v in estado.Recursos.items() if v >= 1 and can_give(estado, k, 1)]
+        cand_items = [
+            k for k, v in estado.Recursos.items() if v >= 1 and can_give(estado, k, 1)
+        ]
         if cand_items:
             offer_item = random.choice(cand_items)
 
     if not offer_item or offer_item == need_item:
-        return Decision(razonamiento="No tengo buen recurso para ofrecer ahora.", accion={"tipo": "esperar"})
+        return Decision(
+            razonamiento="No tengo buen recurso para ofrecer ahora.",
+            accion={"tipo": "esperar"},
+        )
 
     return Decision(
         razonamiento=f"Oferto a {dest}: pido {need_item} y ofrezco {offer_item}.",
@@ -613,7 +697,9 @@ def decidir_fallback(estado: InfoPuesto, gente: list[str], mails_by_id: dict[str
     )
 
 
-def ejecutar_decision(dec: Decision, estado: InfoPuesto, mails_by_id: dict[str, dict[str, Any]]) -> None:
+def ejecutar_decision(
+    dec: Decision, estado: InfoPuesto, mails_by_id: dict[str, dict[str, Any]]
+) -> None:
     accion = dec.accion or {}
     tipo = accion.get("tipo", "esperar")
 
@@ -661,8 +747,15 @@ def ejecutar_decision(dec: Decision, estado: InfoPuesto, mails_by_id: dict[str, 
             return
 
         quiero, ofrezco = parsed
-        (need_item, need_qty), = list(quiero.items())
-        (offer_item, offer_qty), = list(ofrezco.items())
+        # Validar que sea exactamente 1 item por lado
+        need_pair = _extract_first_item(quiero)
+        offer_pair = _extract_first_item(ofrezco)
+        if not need_pair or not offer_pair:
+            if CLEAN_INBOX:
+                borrar_mail(mid)
+            return
+        need_item, need_qty = need_pair
+        offer_item, offer_qty = offer_pair
         need_qty = int(need_qty)
         offer_qty = int(offer_qty)
 
@@ -703,7 +796,9 @@ def ciclo_autonomo() -> None:
             buzon_raw = estado.Buzon or {}
             mails_by_id: dict[str, dict[str, Any]] = {}
             for mid, m in buzon_raw.items():
-                mails_by_id[mid] = dict(m) if isinstance(m, dict) else {"cuerpo": str(m)}
+                mails_by_id[mid] = (
+                    dict(m) if isinstance(m, dict) else {"cuerpo": str(m)}
+                )
 
             procesar_mails_automaticos(mails_by_id)
 
@@ -711,7 +806,7 @@ def ciclo_autonomo() -> None:
             dec = decidir_con_llm(estado, gente_cache, mails_by_id)
             if dec is None:
                 dec = decidir_fallback(estado, gente_cache, mails_by_id)
-            
+
             ejecutar_decision(dec, estado, mails_by_id)
 
         except Exception as e:
