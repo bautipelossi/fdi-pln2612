@@ -160,6 +160,8 @@ def get_gente() -> list[str]:
     for item in data:
         if isinstance(item, dict) and "alias" in item:
             out.append(item["alias"])
+        elif isinstance(item, str):
+            out.append(item)
     return out
 
 
@@ -379,22 +381,21 @@ def mark_offer_sent(dest: str) -> None:
 # LLM - Decisiones Inteligentes
 # =========================================================
 
-SYSTEM_PROMPT = """Eres un agente de comercio inteligente en una simulación multiagente.
+SYSTEM_PROMPT = """Eres un agente de comercio en una simulación multiagente.
 Tu objetivo es conseguir los recursos que te faltan intercambiando con otros agentes.
 
-REGLAS:
-1. Solo puedes ofrecer recursos que tengas en EXCESO (por encima de tu objetivo)
-2. Debes pedir recursos que te FALTAN para cumplir tu objetivo
-3. Un intercambio justo es 1:1 (1 recurso por 1 recurso)
-4. No puedes intercambiar el mismo recurso que pides
-5. Prioriza aceptar ofertas que te beneficien antes de hacer nuevas ofertas
+REGLAS IMPORTANTES:
+1. Si te faltan recursos Y tienes excedentes, DEBES hacer ofertas
+2. Si hay ofertas que puedes aceptar (puedo_dar=True) y te dan algo que necesitas, ACEPTA
+3. Solo espera si NO hay agentes disponibles o NO tienes recursos para ofrecer
+4. Prioridad: aceptar ofertas útiles > hacer ofertas > esperar
 
-Respuestas válidas (JSON exacto, sin markdown):
+Respuestas válidas (JSON exacto, sin explicaciones):
 - Esperar: {"tipo": "esperar"}
-- Ofertar: {"tipo": "ofertar", "dest": "alias_destino", "need_recurso": "X", "need_cantidad": 1, "offer_recurso": "Y", "offer_cantidad": 1}
+- Ofertar: {"tipo": "ofertar", "dest": "ALIAS_DESTINO", "need_recurso": "X", "need_cantidad": 1, "offer_recurso": "Y", "offer_cantidad": 1}
 - Aceptar: {"tipo": "aceptar", "mensaje_id": "ID_DEL_MENSAJE"}
 
-Responde SOLO con el JSON de la acción, sin explicaciones."""
+Responde SOLO con el JSON."""
 
 
 def build_user_prompt(estado: InfoPuesto, gente: list[str], mails_by_id: dict[str, dict[str, Any]]) -> str:
@@ -424,20 +425,33 @@ def build_user_prompt(estado: InfoPuesto, gente: list[str], mails_by_id: dict[st
 - Mis recursos: {json.dumps(estado.Recursos, ensure_ascii=False)}
 - Mi objetivo: {json.dumps(estado.Objetivo, ensure_ascii=False)}
 - Me faltan: {json.dumps(f, ensure_ascii=False) if f else "nada (objetivo cumplido)"}
-- Tengo de sobra: {json.dumps(exc, ensure_ascii=False) if exc else "nada"}
+- Tengo de sobra (puedo ofrecer): {json.dumps(exc, ensure_ascii=False) if exc else "nada"}
 
-AGENTES DISPONIBLES: {json.dumps(otros, ensure_ascii=False) if otros else "ninguno"}
+AGENTES DISPONIBLES para ofertar: {json.dumps(otros, ensure_ascii=False) if otros else "ninguno"}
 
 OFERTAS RECIBIDAS:
 """
     
     if ofertas_recibidas:
         for o in ofertas_recibidas:
-            prompt += f"- ID={o['id']} de {o['de']}: pide {o['pide']}, ofrece {o['ofrece']}. ¿Puedo dar? {o['puedo_dar']}\n"
+            me_sirve = any(k in f for k in o['ofrece'].keys()) if f else False
+            prompt += f"- ID={o['id']} de {o['de']}: pide {o['pide']}, ofrece {o['ofrece']}. ¿Puedo dar? {o['puedo_dar']}. ¿Me sirve? {me_sirve}\n"
     else:
         prompt += "- Ninguna\n"
     
-    prompt += "\n¿Qué acción debo tomar? Responde SOLO con JSON."
+    # Añadir sugerencia explícita con variación
+    if f and exc and otros:
+        import random as _rnd
+        need_list = list(f.keys())
+        off_list = list(exc.keys())
+        need_sug = _rnd.choice(need_list)
+        off_sug = _rnd.choice(off_list)
+        dest_sug = _rnd.choice(otros)
+        prompt += f"\nRECURSOS QUE NECESITAS: {need_list}. Elige uno diferente cada vez."
+        prompt += f"\nRECURSOS QUE PUEDES OFRECER: {off_list}."
+        prompt += f"\nEJEMPLO: Pide {need_sug} y ofrece {off_sug} a {dest_sug}."
+    
+    prompt += "\n\n¿Qué acción tomo? JSON:"
     return prompt
 
 

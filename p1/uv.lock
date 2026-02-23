@@ -108,8 +108,8 @@ wheels = [
 
 [[package]]
 name = "fdi-pln-2612-p1"
-version = "0.1.0"
-source = { virtual = "." }
+version = "1.0.0"
+source = { editable = "." }
 dependencies = [
     { name = "ollama" },
     { name = "pydantic" },
