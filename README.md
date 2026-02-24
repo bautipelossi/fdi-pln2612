@@ -59,8 +59,7 @@ fdi-pln2612/
 │   │   └── es_b.mp3               
 │   └── sinteticos/                  # pangramas finales (sintéticos / resultado)
 │   │   └── es_b.mp3  
-├── estado_butler.json                # archivo auxiliar de estado (si aplica)
-├── .env                              # variables de entorno locales (NO subir si tiene secretos)
+├── estado_butler.json                # archivo auxiliar de estado
 ├── .gitignore
 └── README.md                         # este README (raíz)
 ```
