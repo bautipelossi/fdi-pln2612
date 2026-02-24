@@ -14,7 +14,6 @@ Facultad de Informática | Universidad Complutense de Madrid
 1. [Descripción](#descripcion)
 2. [Estructura del repositorio](#estructura)
 3. [Instalación](#instalacion)
-4. [Uso rápido](#uso)
 5. [Autores](#autores)
 
 ---
