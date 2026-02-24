@@ -73,7 +73,7 @@ git clone https://github.com/bautipelossi/fdi-pln2612.git
 cd fdi-pln2612
 ```
 ### B) Instalar dependencias de cada práctica
-Buscar las dependencias correspondientes a cada practica en su README.me correspondiente
+Buscar las dependencias correspondientes a cada practica en su README.me
 
 ## Autores
 
