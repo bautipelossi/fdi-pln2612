@@ -24,7 +24,7 @@ Facultad de Informática | Universidad Complutense de Madrid
 
 Este repositorio organiza de forma **modular** las prácticas de PLN:
 
-- **Práctica 1 (P1):** Implementación de un **agente autónomo** que participa en un mercado de trueques coordinado por un servidor central (**Butler**). El agente debe negociar, responder ofertas, contraofertar y tomar decisiones estratégicas (opcionalmente usando un LLM).
+- **Práctica 1 (P1):** Implementación de un **agente autónomo** que participa en un mercado de trueques coordinado por un servidor central (**Butler**). El agente debe negociar, responder ofertas, contraofertar y tomar decisiones estratégicas (usando LLM).
 - **Práctica 2 (P2):** Trabajo con **audios/pangramas**, edición y generación de audios sintéticos, y entrega estructurada según consigna.
 
 Cada práctica tiene su **carpeta propia** y su **README.md** específico.
