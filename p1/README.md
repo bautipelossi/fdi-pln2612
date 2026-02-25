@@ -1,74 +1,130 @@
-# Práctica 1 (P1) — Agente Butler (Trueque / Mercado)
-**Grupo 12: Bautista Pelossi Schweizer e Ignacio Ramírez Suarez**
+# Práctica 1 — Agente de Trueque Butler
 
-En esta prácica se implementa un **agente autónomo** que se conecta a Butler y participa en un **mercado dinámico** de trueques con otros agentes (grupos).
-
-El agente:
-- consulta el estado global,
-- recibe mensajes en el buzón,
-- envía ofertas y contraofertas,
-- decide aceptar / rechazar / esperar,
+**Grupo 12 · Procesamiento del Lenguaje Natural (2612)**
+Bautista Pelossi Schweizer · Ignacio Ramírez Suarez
 
 ---
 
-## Estructura (P1)
+## Descripción
+
+Agente autónomo que se conecta al servidor **Butler** y negocia trueques de recursos con otros agentes mediante un **LLM local** (Ollama).
+
+El agente opera en un ciclo continuo:
+
+1. Consulta su estado (`/info`) — recursos actuales, objetivo, buzón.
+2. Procesa el buzón — acepta ofertas válidas y envía los recursos comprometidos.
+3. Decide la siguiente acción mediante el LLM — aceptar una oferta, enviar una nueva, o esperar.
+4. Ejecuta la decisión (enviar carta, enviar paquete, etc.).
+5. Repite hasta cumplir el objetivo.
+
+### Protocolo de comunicación
+
+Los mensajes siguen un protocolo basado en tags estructurados:
+
+| Tag | Uso | Ejemplo |
+|---|---|---|
+| `[OFERTA_V1]` | Proponer un trueque | `[OFERTA_V1] quiero={"aceite": 2} ofrezco={"madera": 3}` |
+| `[ACEPTO_V1]` | Aceptar una oferta | `[ACEPTO_V1] te_envio={"madera": 3} espero={"aceite": 2}` |
+
+---
+
+## Arquitectura
 
 ```text
-p1/
-├── src/
-│   └── fdi_pln_2612_p1/
-│       ├── __init__.py
-│       ├── main.py           
-│       ├── config.py         
-│       ├── butler_api.py     
-│       ├── http_client.py    
-│       ├── models.py         
-│       ├── protocol.py       
-│       ├── strategy.py       
-│       └── llm.py            
-├── pyproject.toml
-└── uv.lock
+src/fdi_pln_2612_p1/
+├── main.py          # Punto de entrada · ciclo principal del agente
+├── config.py        # Variables de entorno y logging
+├── models.py        # Modelos Pydantic (InfoPuesto, Decision)
+├── butler_api.py    # Cliente HTTP para la API de Butler
+├── http_client.py   # Wrapper con retry y backoff exponencial
+├── protocol.py      # Construcción y parseo de mensajes [OFERTA/ACEPTO]
+├── strategy.py      # Lógica de trueque, cooldowns anti-spam
+└── llm.py           # Integración con Ollama · prompts · validación
 ```
+
+| Módulo | Responsabilidad |
+|---|---|
+| `config.py` | Lee toda la configuración de variables de entorno (`FDI_PLN__*`). |
+| `models.py` | Define `InfoPuesto` (compatible case-insensitive con la API) y `Decision`. |
+| `butler_api.py` | Abstrae los endpoints de Butler (`/info`, `/alias`, `/carta`, `/paquete`, `/gente`). |
+| `protocol.py` | Parsea y construye mensajes con regex sobre los tags `[OFERTA_V1]` y `[ACEPTO_V1]`. |
+| `strategy.py` | Calcula faltantes, excedentes, cooldowns y procesa aceptaciones automáticas. |
+| `llm.py` | Construye el prompt, invoca Ollama, valida y corrige la respuesta del modelo. |
+| `main.py` | Orquesta el bucle: info → buzón → LLM → ejecución → sleep. |
+
+---
+
 ## Requisitos
--Python 3.12+
--uv
--Acceso al Butler (variable de entorno obligatoria)
 
-<a id="instalacion"></a>
-##  Instalación
+- **Python** ≥ 3.11
+- **[uv](https://docs.astral.sh/uv/)** (gestor de paquetes)
+- **[Ollama](https://ollama.com/)** corriendo localmente con el modelo `llama3.2:3b`
+- Acceso al servidor Butler (URL proporcionada por el profesor)
 
-> La práctica P1 tiene su propio entorno y dependencias dentro de `p1/`.  
-> Por eso **siempre** instalá desde esa carpeta (no desde la raíz del repo).
+---
 
-1) Entrar a la carpeta de la práctica:
+## Instalación
+
 ```bash
 cd p1
-```
-
-2) Instalar dependencias (crea/actualiza el entorno y respeta uv.lock):
-```bash
 uv sync
 ```
 
+Descargar el modelo de Ollama (si no lo tenés):
+
+```bash
+ollama pull llama3.2:3b
+```
+
 ---
 
-<a id="uso"></a>
-##  Uso y Ejecución
+## Uso
 
+### Variables de entorno
 
-### Paso 1: Ir a la p1/
+| Variable | Requerida | Default | Descripción |
+|---|:---:|---|---|
+| `FDI_PLN__BUTLER_ADDRESS` | **Sí** | — | URL del servidor Butler (`http://host:port`) |
+| `FDI_PLN__ALIAS` | No | `fdi-pln-2612` | Nombre del agente en el mercado |
+| `FDI_PLN__LLM_MODEL` | No | `llama3.2:3b` | Modelo de Ollama a usar |
+| `FDI_PLN__SLEEP_SECONDS` | No | `6` | Segundos entre ciclos |
+| `FDI_PLN__LLM_TIMEOUT` | No | `45` | Timeout en segundos para la llamada al LLM |
+| `FDI_PLN__DEBUG` | No | `1` | Mostrar logs detallados |
+| `FDI_PLN__OFFER_COOLDOWN` | No | `25` | Cooldown (seg) entre ofertas al mismo destino |
+| `FDI_PLN__OFFER_COOLDOWN_GLOBAL` | No | `5` | Cooldown (seg) global entre ofertas |
+
+### Ejecución
 
 ```bash
-cd p1
+export FDI_PLN__BUTLER_ADDRESS="http://IP_DEL_BUTLER:PUERTO"
+uv run fdi-pln-2612-p1
 ```
-### Paso 2: Definir variables
+
+### Prueba local (monopuesto)
+
+Lanzar el servidor Butler en una terminal:
 
 ```bash
-export FDI_PLN__BUTLER_ADDRESS="http://IP_O_HOST_DEL_BUTLER:PORT"
-export FDI_PLN__ALIAS="fdi-pln-2612"
-export FDI_PLN__MODEL="mistral"
+fdi-pln-butler server --monopuesto --buzon -p 7719
 ```
-### Paso 3: Ejecutar
+
+Lanzar dos agentes en terminales separadas:
+
 ```bash
-uv run python -m fdi_pln_2612_p1.main
+# Terminal 2
+FDI_PLN__BUTLER_ADDRESS=http://127.0.0.1:7719 FDI_PLN__ALIAS=agente-alpha FDI_PLN__SLEEP_SECONDS=8 uv run fdi-pln-2612-p1
+
+# Terminal 3
+FDI_PLN__BUTLER_ADDRESS=http://127.0.0.1:7719 FDI_PLN__ALIAS=agente-beta FDI_PLN__SLEEP_SECONDS=10 uv run fdi-pln-2612-p1
 ```
+
+---
+
+## Decisiones de diseño
+
+- **Solo LLM**: todas las decisiones de trading pasan por el modelo, sin heurísticas de fallback.
+- **Accept-first**: el prompt prioriza aceptar ofertas que nos benefician antes que crear nuevas.
+- **Validación post-LLM**: si el modelo elige `esperar` u `ofertar` pero hay ofertas aceptables en el buzón, se fuerza una aceptación automática.
+- **Auto-accept en timeout**: si el LLM no responde a tiempo y hay ofertas válidas, se acepta la mejor disponible.
+- **Anti-spam**: cooldowns por destino y globales evitan saturar a otros agentes con ofertas repetidas.
+- **Retry con backoff**: las llamadas HTTP usan reintentos con backoff exponencial (3 intentos).

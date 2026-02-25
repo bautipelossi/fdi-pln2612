@@ -4,16 +4,22 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class InfoPuesto(BaseModel):
-    """Estado del puesto del agente en Butler."""
+    """Estado del puesto del agente en Butler.
 
-    Alias: str
-    Recursos: dict[str, int] = Field(default_factory=dict)
-    Objetivo: dict[str, int] = Field(default_factory=dict)
-    Buzon: dict[str, dict[str, Any]] | None = None
+    Acepta campos en mayúscula y minúscula para
+    compatibilidad con distintas versiones de Butler.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    Alias: str = Field(default="", alias="alias")
+    Recursos: dict[str, int] = Field(default_factory=dict, alias="recursos")
+    Objetivo: dict[str, int] = Field(default_factory=dict, alias="objetivo")
+    Buzon: dict[str, Any] | list[Any] | None = Field(default=None, alias="buzon")
 
 
 class Decision(BaseModel):

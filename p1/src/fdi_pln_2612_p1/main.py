@@ -16,15 +16,13 @@ from .butler_api import (
     get_alias,
     get_gente,
     get_info,
+    normalize_buzon,
     set_alias_in_butler,
 )
 from .config import (
-    ACCEPT_ANY,
-    ALLOW_BREAK_OBJECTIVE,
     CLEAN_INBOX,
     GENTE_EVERY,
     SLEEP_SECONDS,
-    USE_LLM,
     log,
     validate_config,
 )
@@ -39,7 +37,6 @@ from .protocol import (
 from .strategy import (
     can_give,
     can_send_offer_now,
-    decidir_fallback,
     mark_offer_sent,
     objetivo_cumplido,
     procesar_mails_automaticos,
@@ -155,7 +152,9 @@ def ejecutar_decision(
                 expect_from_other={offer_item: offer_qty},
             )
             enviar_carta(remi, "Acepto", cuerpo_acc)
-            log.info(f"✅ ACEPTO <- {remi}: doy {need_qty} {need_item}, recibo {offer_qty} {offer_item}")
+            log.info(
+                f"✅ ACEPTO <- {remi}: doy {need_qty} {need_item}, recibo {offer_qty} {offer_item}"
+            )
             registrar_intercambio(
                 "aceptar", remi, {need_item: need_qty}, {offer_item: offer_qty}
             )
@@ -175,9 +174,6 @@ def ciclo_autonomo() -> None:
     validate_config()
 
     log.info("AGENTE INICIANDO...")
-    log.info(f"ACCEPT_ANY: {ACCEPT_ANY}")
-    log.info(f"ALLOW_BREAK_OBJECTIVE: {ALLOW_BREAK_OBJECTIVE}")
-    log.info(f"USE_LLM: {USE_LLM}")
 
     set_alias_in_butler()
     alias = get_alias()
@@ -189,10 +185,10 @@ def ciclo_autonomo() -> None:
             estado_cache["recursos"] = dict(estado.Recursos)
 
             # Mostrar estado visual
-            print(f"\n{'─'*50}")
+            print(f"\n{'─' * 50}")
             print(f"  CICLO {CICLO}")
-            print(f"{'─'*50}")
-            
+            print(f"{'─' * 50}")
+
             # Progreso por recurso objetivo
             all_done = True
             for recurso, necesito in estado.Objetivo.items():
@@ -205,15 +201,18 @@ def ciclo_autonomo() -> None:
                 print(f"  {check} {recurso:12} [{bar}] {tengo}/{necesito}")
                 if tengo < necesito:
                     all_done = False
-            
+
             # Recursos extra (no en objetivo)
-            extras = {k: v for k, v in estado.Recursos.items() 
-                     if k not in estado.Objetivo and v > 0}
+            extras = {
+                k: v
+                for k, v in estado.Recursos.items()
+                if k not in estado.Objetivo and v > 0
+            }
             if extras:
                 extra_str = ", ".join(f"{k}:{v}" for k, v in extras.items())
                 print(f"  💰 Extras: {extra_str}")
-            
-            print(f"{'─'*50}")
+
+            print(f"{'─' * 50}")
 
             # Verificar si ya ganamos
             if objetivo_cumplido(estado):
@@ -231,18 +230,24 @@ def ciclo_autonomo() -> None:
                 gente_cache = get_gente()
 
             buzon_raw = estado.Buzon or {}
-            mails_by_id: dict[str, dict[str, Any]] = {}
-            for mid, m in buzon_raw.items():
-                mails_by_id[mid] = (
-                    dict(m) if isinstance(m, dict) else {"cuerpo": str(m)}
-                )
+            mails_by_id = normalize_buzon(buzon_raw)
+            if mails_by_id:
+                log.info(f"📬 Buzón: {len(mails_by_id)} mensaje(s)")
+                for mid, m in list(mails_by_id.items())[:5]:
+                    remi = (m.get("remi") or "?")[:20]
+                    asunto = (m.get("asunto") or "?")[:20]
+                    log.info(f"  └ [{mid[:8]}] de={remi} asunto={asunto}")
 
             procesar_mails_automaticos(mails_by_id, estado_cache["recursos"])
 
-            # Primero intentar con LLM, si falla usar heurísticas
+            # Decisión con LLM (único motor de decisión)
             dec = decidir_con_llm(estado, gente_cache, mails_by_id)
             if dec is None:
-                dec = decidir_fallback(estado, gente_cache, mails_by_id)
+                log.warning("LLM no disponible, esperando...")
+                dec = Decision(
+                    razonamiento="LLM no disponible",
+                    accion={"tipo": "esperar"},
+                )
 
             ejecutar_decision(dec, estado, mails_by_id)
 

@@ -1,0 +1,204 @@
+{
+  "agente-alpha": {
+    "Alias": "agente-alpha",
+    "Recursos": {
+      "aceite": 4,
+      "trigo": 3,
+      "piedra": 4,
+      "oro": 14,
+      "tela": 1
+    },
+    "Objetivo": {
+      "tela": 4,
+      "aceite": 4,
+      "vino": 5
+    },
+    "Buzon": {
+      "4377a961-8a53-49ed-ac2b-9519936feeef": {
+        "remi": "agente-beta",
+        "dest": "agente-alpha",
+        "asunto": "Oferta",
+        "cuerpo": "[OFERTA_V1] quiero={\"tela\": 1} ofrezco={\"queso\": 1}\nNecesito 1 tela y ofrezco 1 queso.",
+        "id": "4377a961-8a53-49ed-ac2b-9519936feeef",
+        "fecha": "2026-02-25T11:21:58.437869"
+      },
+      "3d9219fb-2e10-4a82-a880-f49eda190788": {
+        "remi": "agente-beta",
+        "dest": "agente-alpha",
+        "asunto": "Oferta",
+        "cuerpo": "[OFERTA_V1] quiero={\"aceite\": 2} ofrezco={\"trigo\": 4}\nNecesito 2 aceite y ofrezco 4 trigo.",
+        "id": "3d9219fb-2e10-4a82-a880-f49eda190788",
+        "fecha": "2026-02-25T11:22:32.794620"
+      },
+      "b7aec068-7a60-44c3-835a-0b7cd2f38eca": {
+        "remi": "agente-beta",
+        "dest": "agente-alpha",
+        "asunto": "Oferta",
+        "cuerpo": "[OFERTA_V1] quiero={\"ladrillos\": 1} ofrezco={\"trigo\": 1}\nNecesito 1 ladrillos y ofrezco 1 trigo.",
+        "id": "b7aec068-7a60-44c3-835a-0b7cd2f38eca",
+        "fecha": "2026-02-25T11:23:16.276376"
+      },
+      "75de9e6d-c20e-4009-96c5-6e48322afdb1": {
+        "remi": "agente-beta",
+        "dest": "agente-alpha",
+        "asunto": "Oferta",
+        "cuerpo": "[OFERTA_V1] quiero={\"ladrillos\": 1} ofrezco={\"queso\": 1}\nNecesito 1 ladrillos y ofrezco 1 queso.",
+        "id": "75de9e6d-c20e-4009-96c5-6e48322afdb1",
+        "fecha": "2026-02-25T11:24:09.711909"
+      },
+      "dee056e3-a7b2-44bb-916b-0d350af00175": {
+        "remi": "agente-beta",
+        "dest": "agente-alpha",
+        "asunto": "Oferta",
+        "cuerpo": "[OFERTA_V1] quiero={\"aceite\": 1} ofrezco={\"queso\": 1}\nNecesito 1 aceite y ofrezco 1 queso.",
+        "id": "dee056e3-a7b2-44bb-916b-0d350af00175",
+        "fecha": "2026-02-25T11:24:43.094410"
+      },
+      "7f3acc2f-50b2-49bb-aa47-f74c13f701d8": {
+        "remi": "agente-beta",
+        "dest": "agente-alpha",
+        "asunto": "Oferta",
+        "cuerpo": "[OFERTA_V1] quiero={\"tela\": 1} ofrezco={\"queso\": 1}\nNecesito 1 tela y ofrezco 1 queso.",
+        "id": "7f3acc2f-50b2-49bb-aa47-f74c13f701d8",
+        "fecha": "2026-02-25T11:25:25.619029"
+      },
+      "0d67c560-9b54-4265-865f-0ad2baa7f51e": {
+        "remi": "agente-beta",
+        "dest": "agente-alpha",
+        "asunto": "Oferta",
+        "cuerpo": "[OFERTA_V1] quiero={\"tela\": 1} ofrezco={\"queso\": 1}\nNecesito 1 tela y ofrezco 1 queso.",
+        "id": "0d67c560-9b54-4265-865f-0ad2baa7f51e",
+        "fecha": "2026-02-25T11:26:19.420349"
+      },
+      "1d9b7169-75de-4401-92df-f971147eb549": {
+        "remi": "agente-beta",
+        "dest": "agente-alpha",
+        "asunto": "Oferta",
+        "cuerpo": "[OFERTA_V1] quiero={\"ladrillos\": 1} ofrezco={\"queso\": 1}\nNecesito 1 ladrillos y ofrezco 1 queso.",
+        "id": "1d9b7169-75de-4401-92df-f971147eb549",
+        "fecha": "2026-02-25T11:27:07.709282"
+      },
+      "0068deee-8ef2-4453-9e94-5763c704042c": {
+        "remi": "agente-beta",
+        "dest": "agente-alpha",
+        "asunto": "Oferta",
+        "cuerpo": "[OFERTA_V1] quiero={\"queso\": 1} ofrezco={\"queso\": 1}\nNecesito 1 queso y ofrezco 1 queso.",
+        "id": "0068deee-8ef2-4453-9e94-5763c704042c",
+        "fecha": "2026-02-25T11:28:02.383692"
+      },
+      "64c38323-4ab9-4c1f-911d-684792e9c878": {
+        "remi": "agente-beta",
+        "dest": "agente-alpha",
+        "asunto": "Oferta",
+        "cuerpo": "[OFERTA_V1] quiero={\"ladrillos\": 1} ofrezco={\"trigo\": 1}\nNecesito 1 ladrillos y ofrezco 1 trigo.",
+        "id": "64c38323-4ab9-4c1f-911d-684792e9c878",
+        "fecha": "2026-02-25T11:58:02.396966"
+      }
+    }
+  },
+  "agente-beta": {
+    "Alias": "agente-beta",
+    "Recursos": {
+      "aceite": 2,
+      "queso": 2,
+      "trigo": 4,
+      "oro": 17,
+      "tela": 2
+    },
+    "Objetivo": {
+      "aceite": 4,
+      "ladrillos": 5,
+      "tela": 5
+    },
+    "Buzon": {
+      "e6649ef4-4537-4448-83b2-2de7026191fb": {
+        "remi": "agente-alpha",
+        "dest": "agente-beta",
+        "asunto": "Oferta",
+        "cuerpo": "[OFERTA_V1] quiero={\"vino\": 1} ofrezco={\"trigo\": 1}\nNecesito 1 vino y ofrezco 1 trigo.",
+        "id": "e6649ef4-4537-4448-83b2-2de7026191fb",
+        "fecha": "2026-02-25T11:22:41.231943"
+      },
+      "da6d4633-64ed-4add-a66d-e72083b0d377": {
+        "remi": "agente-alpha",
+        "dest": "agente-beta",
+        "asunto": "Oferta",
+        "cuerpo": "[OFERTA_V1] quiero={\"vino\": 1} ofrezco={\"piedra\": 1}\nNecesito 1 vino y ofrezco 1 piedra.",
+        "id": "da6d4633-64ed-4add-a66d-e72083b0d377",
+        "fecha": "2026-02-25T11:23:28.634888"
+      },
+      "c1a3b1b8-da29-4006-8fb0-e3e05b99090d": {
+        "remi": "agente-alpha",
+        "dest": "agente-beta",
+        "asunto": "Oferta",
+        "cuerpo": "[OFERTA_V1] quiero={\"vino\": 1} ofrezco={\"piedra\": 1}\nNecesito 1 vino y ofrezco 1 piedra.",
+        "id": "c1a3b1b8-da29-4006-8fb0-e3e05b99090d",
+        "fecha": "2026-02-25T11:23:56.050895"
+      },
+      "3d2868b5-59d7-447d-ad34-484950c61b4d": {
+        "remi": "agente-alpha",
+        "dest": "agente-beta",
+        "asunto": "Oferta",
+        "cuerpo": "[OFERTA_V1] quiero={\"tela\": 1} ofrezco={\"piedra\": 1}\nNecesito 1 tela y ofrezco 1 piedra.",
+        "id": "3d2868b5-59d7-447d-ad34-484950c61b4d",
+        "fecha": "2026-02-25T11:24:26.986719"
+      },
+      "34b01528-a693-46b7-8c69-b930c64e9eeb": {
+        "remi": "agente-alpha",
+        "dest": "agente-beta",
+        "asunto": "Oferta",
+        "cuerpo": "[OFERTA_V1] quiero={\"trigo\": 1} ofrezco={\"piedra\": 1}\nNecesito 1 trigo y ofrezco 1 piedra.",
+        "id": "34b01528-a693-46b7-8c69-b930c64e9eeb",
+        "fecha": "2026-02-25T11:25:03.278152"
+      },
+      "66e07490-529a-40ce-a026-aa732016f93e": {
+        "remi": "agente-alpha",
+        "dest": "agente-beta",
+        "asunto": "Oferta",
+        "cuerpo": "[OFERTA_V1] quiero={\"trigo\": 1} ofrezco={\"trigo\": 1}\nNecesito 1 trigo y ofrezco 1 trigo.",
+        "id": "66e07490-529a-40ce-a026-aa732016f93e",
+        "fecha": "2026-02-25T11:25:55.739088"
+      },
+      "55394318-95c9-4539-89f8-84ace91d91ba": {
+        "remi": "agente-alpha",
+        "dest": "agente-beta",
+        "asunto": "Oferta",
+        "cuerpo": "[OFERTA_V1] quiero={\"vino\": 1} ofrezco={\"trigo\": 1}\nNecesito 1 vino y ofrezco 1 trigo.",
+        "id": "55394318-95c9-4539-89f8-84ace91d91ba",
+        "fecha": "2026-02-25T11:26:43.527718"
+      },
+      "ef6c18ac-0c13-4264-bbb4-aa930d908f9a": {
+        "remi": "agente-alpha",
+        "dest": "agente-beta",
+        "asunto": "Oferta",
+        "cuerpo": "[OFERTA_V1] quiero={\"piedra\": 1} ofrezco={\"piedra\": 1}\nNecesito 1 piedra y ofrezco 1 piedra.",
+        "id": "ef6c18ac-0c13-4264-bbb4-aa930d908f9a",
+        "fecha": "2026-02-25T11:27:35.461124"
+      },
+      "b8b8456b-bf2f-482f-b573-e7194388be38": {
+        "remi": "agente-alpha",
+        "dest": "agente-beta",
+        "asunto": "Oferta",
+        "cuerpo": "[OFERTA_V1] quiero={\"vino\": 1} ofrezco={\"trigo\": 1}\nNecesito 1 vino y ofrezco 1 trigo.",
+        "id": "b8b8456b-bf2f-482f-b573-e7194388be38",
+        "fecha": "2026-02-25T11:38:20.719606"
+      },
+      "3d6ef601-bdbb-40e7-88dd-6e497181aa1e": {
+        "remi": "agente-alpha",
+        "dest": "agente-beta",
+        "asunto": "Oferta",
+        "cuerpo": "[OFERTA_V1] quiero={\"piedra\": 1} ofrezco={\"piedra\": 1}\nNecesito 1 piedra y ofrezco 1 piedra.",
+        "id": "3d6ef601-bdbb-40e7-88dd-6e497181aa1e",
+        "fecha": "2026-02-25T11:57:24.239495"
+      },
+      "71377bb3-4ca3-4cb5-9c2f-d2b9bca6eae1": {
+        "remi": "agente-alpha",
+        "dest": "agente-beta",
+        "asunto": "Oferta",
+        "cuerpo": "[OFERTA_V1] quiero={\"tela\": 1} ofrezco={\"piedra\": 1}\nNecesito 1 tela y ofrezco 1 piedra.",
+        "id": "71377bb3-4ca3-4cb5-9c2f-d2b9bca6eae1",
+        "fecha": "2026-02-25T16:36:42.332798"
+      }
+    }
+  }
+}

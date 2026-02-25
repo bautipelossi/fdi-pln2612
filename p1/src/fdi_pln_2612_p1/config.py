@@ -36,23 +36,22 @@ GENTE_EVERY = int(os.getenv("FDI_PLN__GENTE_EVERY", "3"))  # /gente cada N ciclo
 
 # Anti-spam
 OFFER_COOLDOWN_PER_DEST = int(os.getenv("FDI_PLN__OFFER_COOLDOWN", "25"))
-OFFER_COOLDOWN_GLOBAL = int(os.getenv("FDI_PLN__OFFER_COOLDOWN_GLOBAL", "10"))
+OFFER_COOLDOWN_GLOBAL = int(os.getenv("FDI_PLN__OFFER_COOLDOWN_GLOBAL", "5"))
 BAD_DEST_SECONDS = int(os.getenv("FDI_PLN__BAD_DEST_SECONDS", "60"))
 
 # TEST MODE (casa): permitir trade aunque baje tu objetivo (si tenés el recurso)
 ALLOW_BREAK_OBJECTIVE = os.getenv("FDI_PLN__ALLOW_BREAK_OBJECTIVE", "0") == "1"
-# TEST MODE: aceptar aunque no te sirva (mientras puedas pagar)
-ACCEPT_ANY = os.getenv("FDI_PLN__ACCEPT_ANY", "0") == "1"
 # Limpiar buzón (para que no crezca infinito)
 CLEAN_INBOX = os.getenv("FDI_PLN__CLEAN_INBOX", "1") == "1"
-MAX_MAILS = int(os.getenv("FDI_PLN__MAX_MAILS", "20"))
 
 DEBUG = os.getenv("FDI_PLN__DEBUG", "1") == "1"
 
 # LLM
 LLM_MODEL = os.getenv("FDI_PLN__LLM_MODEL", "llama3.2:3b")
 USE_LLM = os.getenv("FDI_PLN__USE_LLM", "1") == "1"
-LLM_TIMEOUT = float(os.getenv("FDI_PLN__LLM_TIMEOUT", "30"))
+LLM_TIMEOUT = float(os.getenv("FDI_PLN__LLM_TIMEOUT", "45"))
+LLM_TEMPERATURE = float(os.getenv("FDI_PLN__LLM_TEMPERATURE", "0.3"))
+LLM_NUM_PREDICT = int(os.getenv("FDI_PLN__LLM_NUM_PREDICT", "80"))
 
 # Headers HTTP
 HEADERS = {"Connection": "close"}  # evita keep-alive y baja 10053/10054
