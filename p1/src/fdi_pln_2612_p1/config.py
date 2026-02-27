@@ -47,7 +47,7 @@ CLEAN_INBOX = os.getenv("FDI_PLN__CLEAN_INBOX", "1") == "1"
 DEBUG = os.getenv("FDI_PLN__DEBUG", "1") == "1"
 
 # LLM
-LLM_MODEL = os.getenv("FDI_PLN__LLM_MODEL", "llama3.2:3b")
+LLM_MODEL = os.getenv("FDI_PLN__LLM_MODEL", "qwen2.5:3b")
 USE_LLM = os.getenv("FDI_PLN__USE_LLM", "1") == "1"
 LLM_TIMEOUT = float(os.getenv("FDI_PLN__LLM_TIMEOUT", "45"))
 LLM_TEMPERATURE = float(os.getenv("FDI_PLN__LLM_TEMPERATURE", "0.3"))

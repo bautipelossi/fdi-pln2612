@@ -58,7 +58,7 @@ src/fdi_pln_2612_p1/
 
 - **Python** ≥ 3.11
 - **[uv](https://docs.astral.sh/uv/)** (gestor de paquetes)
-- **[Ollama](https://ollama.com/)** corriendo localmente con el modelo `llama3.2:3b`
+- **[Ollama](https://ollama.com/)** corriendo localmente con el modelo `qwen2.5:3b`
 - Acceso al servidor Butler (URL proporcionada por el profesor)
 
 ---
@@ -73,7 +73,7 @@ uv sync
 Descargar el modelo de Ollama (si no lo tenés):
 
 ```bash
-ollama pull llama3.2:3b
+ollama pull qwen2.5:3b
 ```
 
 ---
@@ -86,7 +86,7 @@ ollama pull llama3.2:3b
 |---|:---:|---|---|
 | `FDI_PLN__BUTLER_ADDRESS` | **Sí** | — | URL del servidor Butler (`http://host:port`) |
 | `FDI_PLN__ALIAS` | No | `fdi-pln-2612` | Nombre del agente en el mercado |
-| `FDI_PLN__LLM_MODEL` | No | `llama3.2:3b` | Modelo de Ollama a usar |
+| `FDI_PLN__LLM_MODEL` | No | `qwen2.5:3b` | Modelo de Ollama a usar |
 | `FDI_PLN__SLEEP_SECONDS` | No | `6` | Segundos entre ciclos |
 | `FDI_PLN__LLM_TIMEOUT` | No | `45` | Timeout en segundos para la llamada al LLM |
 | `FDI_PLN__DEBUG` | No | `1` | Mostrar logs detallados |
@@ -122,7 +122,7 @@ FDI_PLN__BUTLER_ADDRESS=http://127.0.0.1:7719 FDI_PLN__ALIAS=agente-beta FDI_PLN
 
 ## Decisiones de diseño
 
-- **Solo LLM**: todas las decisiones de trading pasan por el modelo, sin heurísticas de fallback.
+- **LLM**: todas las decisiones de trading pasan por el modelo, con fallback por si el modelo falla.
 - **Accept-first**: el prompt prioriza aceptar ofertas que nos benefician antes que crear nuevas.
 - **Validación post-LLM**: si el modelo elige `esperar` u `ofertar` pero hay ofertas aceptables en el buzón, se fuerza una aceptación automática.
 - **Auto-accept en timeout**: si el LLM no responde a tiempo y hay ofertas válidas, se acepta la mejor disponible.
