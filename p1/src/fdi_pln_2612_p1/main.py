@@ -261,9 +261,23 @@ def ciclo_autonomo() -> None:
     log.info("Agente terminado. Intercambios totales: %d", len(intercambios_realizados))
 
 
-def main() -> None:
-    """Punto de entrada principal."""
+import click
+
+
+@click.group(context_settings={"help_option_names": ["-h", "--help"]})
+def cli():
+    """Agente autónomo de trueque para Butler."""
+    pass
+
+
+@cli.command()
+def run():
+    """Ejecuta el agente (requiere FDI_PLN__BUTLER_ADDRESS)."""
     ciclo_autonomo()
+
+
+def main():
+    cli()
 
 
 if __name__ == "__main__":
