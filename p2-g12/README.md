@@ -9,7 +9,7 @@
 Mi objetivo fue sintetizar los pangramas objetivos mediante concatenación (corta-pega) de segmentos extraídos del pangrama origen usando Praat. Al principio asumí que la tarea sería relativamente directa si aislaba bien los “sonidos” y los empalmaba con cuidado.
 
 Una idea que tuve desde el inicio fue que en español (mi lengua materna) el proceso sería más sencillo porque la pronunciación es más estable y “plana”: los fonemas tienden a mantenerse más consistentes entre palabras. En cambio, en inglés ocurre lo contrario: una misma letra puede corresponder a sonidos muy diferentes dependiendo de la palabra, la posición y el acento, lo que complica la extracción “limpia” de fonemas.
-En cuanto a los otros idiomas, tras realizar los audios sintéticos de inglés y español, me he ado cuenta de lo difícil que se me haría la tarea de formar los audios en idiomas que no conozco, sumandole tambíen que los audios originales grabados no tendrían una buena pronunciación, lo que dificultaría mucho el proceso.
+En cuanto a los otros idiomas, tras realizar los audios sintéticos de inglés y español, me he dado cuenta de lo difícil que se me haría la tarea de formar los audios en idiomas que no conozco, sumandole tambíen que los audios originales grabados no tendrían una buena pronunciación, lo que dificultaría mucho el proceso.
 
 ### 2. Observaciones clave: inglés como dificultad… y como ventaja
 Durante la exploración noté que el inglés, aunque más irregular, también ofrece un “margen de maniobra” interesante:
@@ -40,24 +40,24 @@ En resumen, el experimento muestra por qué la síntesis clásica por concatenac
 
 ## Informe Integrante B
 ### 1. Diagnóstico del Problema y exploración inicial
-El objetivo inicial fue sintetizar el pangrama objetivo aislando fonemas del pangrama origen ("El veloz murciélago...") mediante una lectura intencionalmente lenta y silabeada. 
+El objetivo inicial fue sintetizar el pangrama objetivo en español aislando fonemas del pangrama origen ("El veloz murciélago...") mediante una lectura intencionalmente lenta y haciendo énfasis en las sílabas. El resultado no fue óptimo: solo se pudo extraer de manera entendible la palabra "jugoso"
 
-**Resultado:** Estrategia fallida (solo se pudo extraer limpiamente la palabra "jugoso").
 **Posible explicación:** El habla no es una concatenación de unidades discretas. Al analizar las grabaciones en Praat, el espectrograma —que representa el sonido en tres dimensiones: Tiempo, Frecuencia y Energía— revela el problema de la **coarticulación**. Al hablar, la modulación es continua y leer lento o tratar de tener una entonación "neutra" no soluciona estos problemas.
 
 ### 2. Nuevo pangrama
-Ante la incompatibilidad fonética del pangrama original con la prosodia y las transiciones de mi dialecto, decidí diseñar una frase origen alternativa que contuviera los fonemas exactos que necesitaba, adaptados a mi fonética natural:
-> *"Julián, zurdo frívolo, mezcló jungla de dedos: uña, ñandú, pipa; KIWI vino. Extra quimera: silla, tótem; noche llena, vaca al alma, copa Holanda."*
+Ante la incompatibilidad del pangrama original con la prosodia y las transiciones de mi dialecto, decidí diseñar una frase origen alternativa que contuviera los fonemas exactos que necesitaba, adaptados a mi fonética natural rioplatense:
+> *"Julián, zurdo frívolo, mezcló jungla de dedos: uña, ñandú, pipa; KIWI vino. Extra quimera: silla, tótem; noche llena, vaca al alma, copa Holanda."* (es_secundaria_b.mp3)
 
 ### 3. Ejecución Acústica en Praat
 Para el proceso de "corta-pega", las decisiones de corte en el espectrograma se basaron en la naturaleza acústica de cada fonema vista en clase:
 
-* **Vocales:** Identificables por sus ondas estables en el espacio. Los cortes se realizaron buscando los cruces por cero en la forma de onda para evitar saltos bruscos de fase, intentando empalmar vocales con formantes similares.
-* **Consonantes Oclusivas (p, t, k, b, d, g):** Son los segmentos más críticos. Acústicamente se componen de un silencio (cierre del tracto) seguido de un *release* o explosión abrupta de energía. Para evitar que sonaran cortadas, fue vital incluir la fase de silencio previo al realizar el empalme, aunque a veces fue imposible.
-* **Consonantes Fricativas (f, s):** Al estar formadas por ruido continuo, su representación en el espectrograma es ruido aperiódico en altas frecuencias. Fueron relativamente más eficientes al corte, siempre que se respetara su duración relativa frente a las vocales adyacentes.
+* **Vocales:** Identificables por sus ondas estables en el espacio. Los cortes se realizaron buscando los cruces en la forma de onda para evitar saltos bruscos de fase, intentando empalmar vocales con formantes similares.
+* **Consonantes Oclusivas (p, t, k, b, d, g):** Son los segmentos más críticos y dificultosos. Acústicamente se componen de un silencio (cierre del tracto) seguido de un *release* o explosión abrupta de energía. Para evitar que sonaran cortadas, fue vital incluir la fase de silencio previo al realizar el empalme, aunque a veces fue imposible por el lugar donde estaba la palabra.
+* **Consonantes Fricativas (f, s):** Al estar formadas por ruido continuo, su representación en el espectrograma es ruido en altas frecuencias. Fueron relativamente más eficientes al corte, siempre que se respetara su duración relativa frente a las vocales adyacentes.
 
 ### 4. Conclusiones del Paradigma
-A pesar de la optimización y la grabación de una nueva frase, el resultado mantiene un tono "robótico". Esto demuestra por qué la síntesis por concatenación clásica tiene un límite infranqueable en la naturalidad: carece de un modelo prosódico global. En la comunicación humana, el cerebro del receptor predice patrones continuos. Al ensamblar fragmentos, rompemos la curva de entonación natural. Esta limitación evidencia por qué la industria de PLN (Sistemas TTS) ha migrado hacia modelos basados en Redes Neuronales como vimos en clases, que no pegan audios, sino que aprenden a generar el espectrograma desde cero prediciendo el contexto completo.
+A pesar de la optimización y la grabación de una nueva frase, el resultado mantiene un tono "robótico" y poco natural. Esto demuestra por qué la síntesis por concatenación clásica tiene un límite en la naturalidad: carece de un modelo prosódico global. Como vimos en clase, en la comunicación humana, el cerebro del receptor intenta predecir patrones continuos. Al ensamblar fragmentos, rompemos la curva de entonación natural. Esta limitación evidencia por qué los Sistemas TTS (text to speech) ha migrado hacia modelos basados en Redes Neuronales como vimos en clases, que no pegan audios, sino que aprenden a generar el espectrograma desde cero prediciendo el contexto completo.
+
 
 
 
