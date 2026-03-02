@@ -3,7 +3,39 @@
 **Integrante A:** Ignacio Ramirez Suarez  
 **Integrante B:** Bautista Pelossi Schweizer
 
-**Pangrama objetivo (español)**: Un jugoso zumo de piña y kiwi bien frío es exquisito, y no lleva alcohol. 
+
+## Informe Integrante A
+### 1. Planteamiento inicial y primeras hipótesis
+Mi objetivo fue sintetizar los pangramas objetivos mediante concatenación (corta-pega) de segmentos extraídos del pangrama origen usando Praat. Al principio asumí que la tarea sería relativamente directa si aislaba bien los “sonidos” y los empalmaba con cuidado.
+
+Una idea que tuve desde el inicio fue que en español (mi lengua materna) el proceso sería más sencillo porque la pronunciación es más estable y “plana”: los fonemas tienden a mantenerse más consistentes entre palabras. En cambio, en inglés ocurre lo contrario: una misma letra puede corresponder a sonidos muy diferentes dependiendo de la palabra, la posición y el acento, lo que complica la extracción “limpia” de fonemas.
+En cuanto a los otros idiomas, tras realizar los audios sintéticos de inglés y español, me he ado cuenta de lo difícil que se me haría la tarea de formar los audios en idiomas que no conozco, sumandole tambíen que los audios originales grabados no tendrían una buena pronunciación, lo que dificultaría mucho el proceso.
+
+### 2. Observaciones clave: inglés como dificultad… y como ventaja
+Durante la exploración noté que el inglés, aunque más irregular, también ofrece un “margen de maniobra” interesante:
+
+- Dificultad: hay mucha variación contextual (vocales reducidas, diptongos, aspiración, cambios por coarticulación). Esto hace que el mismo “sonido esperado” rara vez aparezca aislado y uniforme.
+
+- Ventaja: esa variación permite reutilizar fragmentos de una palabra para construir otra cosa distinta. En la práctica, pude usar segmentos donde una letra suena “como otra” (por ejemplo, aprovechar fricativas, aproximantes o transiciones vocálicas que encajan mejor que el fonema “ideal” buscado). Es decir, no siempre se trata de “copiar el fonema exacto”, sino de encontrar el fragmento acústico que más se parezca al objetivo.
+
+Esta parte fue especialmente evidente al trabajar con consonantes: algunas fricativas y transiciones entre sonidos resultaron más útiles que intentar extraer un fonema “puro”.
+
+### 3. Dificultades reales en Praat: vocales y segmentación
+Una conclusión importante fue que las vocales no fueron tan fáciles como esperaba, sobre todo cuando aparecen “solas” o en contextos muy abiertos:
+Me resultó más fácil recortar y reutilizar una sílaba que una vocal suelta. Las razones principales:
+
+La consonante aporta un “anclaje” acústico (cierre, explosión, fricción), la transición CV o VC incluye información natural de coarticulación, y el oído tolera mejor empalmes cuando hay estructura silábica.
+
+En la edición intenté realizar cortes en zonas estables, cuando fue posible. Aun así, la coarticulación sigue imponiendo límites: el habla no se compone de piezas totalmente independientes.
+
+### 4. Conclusiones sobre el método de concatenación
+El resultado final (aunque funcional) conserva un carácter robótico y evidencia la limitación del paradigma:
+
+La concatenación rompe la prosodia global (curva de entonación, ritmo, acento), que en el habla natural se mantiene coherente a lo largo de la frase.
+
+Incluso con cortes “correctos”, el oído detecta discontinuidades en:timbre vocal (formantes), energía, y transiciones entre fonemas.
+
+En resumen, el experimento muestra por qué la síntesis clásica por concatenación tiene dificultades para alcanzar naturalidad: puede construir la secuencia segmental, pero el reultado no se acerca a la claridad de los pangramas originales.
 
 
 ## Informe Integrante B
@@ -26,5 +58,6 @@ Para el proceso de "corta-pega", las decisiones de corte en el espectrograma se 
 
 ### 4. Conclusiones del Paradigma
 A pesar de la optimización y la grabación de una nueva frase, el resultado mantiene un tono "robótico". Esto demuestra por qué la síntesis por concatenación clásica tiene un límite infranqueable en la naturalidad: carece de un modelo prosódico global. En la comunicación humana, el cerebro del receptor predice patrones continuos. Al ensamblar fragmentos, rompemos la curva de entonación natural. Esta limitación evidencia por qué la industria de PLN (Sistemas TTS) ha migrado hacia modelos basados en Redes Neuronales como vimos en clases, que no pegan audios, sino que aprenden a generar el espectrograma desde cero prediciendo el contexto completo.
+
 
 
