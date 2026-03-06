@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["typer"]
+# ///
 """
 FDI-PLN Criptoglifos 2026 (PLNCG26) - Equipo 12
 Convierte texto UTF-8 a PLNCG26 y viceversa.
@@ -11,7 +15,7 @@ import typer
 app = typer.Typer()
 
 # Constantes del cifrado
-K = 45  # Desplazamiento Caesar
+K = 45 
 SPACE_B = 0x0B  # Espacio en PLNCG26
 NL_B = 0x0A  # Salto de línea en PLNCG26
 BYTE_ENYE = 0x34  # Ñ en PLNCG26
