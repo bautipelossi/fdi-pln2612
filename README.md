@@ -25,6 +25,8 @@ Este repositorio organiza de forma **modular** las prácticas de PLN:
 
 - **Práctica 1 (P1):** Implementación de un **agente autónomo** que participa en un mercado de trueques coordinado por un servidor central (**Butler**). El agente debe negociar, responder ofertas, contraofertar y tomar decisiones estratégicas (usando LLM).
 - **Práctica 2 (P2):** Trabajo con **audios/pangramas**, edición y generación de audios sintéticos, y entrega estructurada según consigna.
+- **Práctica 3 (P3):** Implementación de un script de criptoglifos PLNCG26 capaz de convertir texto entre UTF-8 y el formato binario PLNCG26 utilizado en la asignatura. El script permite **codificar y decodificar ficheros** desde la línea de comandos y trabaja directamente con **bytes** para garantizar la correcta manipulación de los datos binarios. 
+
 
 Cada práctica tiene su **carpeta propia** y su **README.md** específico.
 
@@ -52,15 +54,26 @@ fdi-pln2612/
 │   ├── pyproject.toml
 │   └── uv.lock
 │
-├── p2-g12/                          # Práctica 2: Audios / Pangramas (Grupo 12)
+├── p2-g12/                          # Práctica 2: Pangramas y audios
 │   ├── README.md
-│   ├── originales/                  #pangramas originales
-│   │   └── es_b.mp3               
-│   └── sinteticos/                  # pangramas finales (sintéticos / resultado)
-│   │   └── es_b.mp3  
-├── estado_butler.json                # archivo auxiliar de estado
+│   │
+│   ├── originales/                  # audios originales grabados
+│   │   ├── en_original_a.mp3
+│   │   ├── es_original_a.mp3
+│   │   ├── es_original_b.mp3
+│   │   └── es_secundaria_b.mp3
+│   │
+│   └── sinteticos/                  # audios generados / finales
+│       ├── en_sintetico_a.mp3
+│       ├── es_sintetico_a.mp3
+│       └── es_b.mp3
+│
+├── p3/                              # Práctica 3: Criptoglifos PLNCG26
+│   ├── fdi-pln-2612-p3.py           # script de codificación/decodificación
+│
+├── estado_butler.json               # archivo auxiliar de estado (usado en P1)
 ├── .gitignore
-└── README.md                         # este README (raíz)
+└── README.md                        # README principal del repositorio
 ```
 
 <a id="instalacion"></a>
