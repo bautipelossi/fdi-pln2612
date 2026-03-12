@@ -234,7 +234,7 @@ def detect(fichero: Path) -> None:
     # 3. Ausencia de bytes altos (>127) que serían típicos de UTF-8
 
     score = 0.0
-    total_checks = 4
+    total_checks = 3
 
     # Check 1: Mayoría de bytes en rango bajo (texto ASCII - 45 = ~20-80)
     low_bytes = sum(1 for b in data if 0x00 <= b <= 0x60)
@@ -251,15 +251,6 @@ def detect(fichero: Path) -> None:
     high_bytes = sum(1 for b in data if b > 0x7F)
     if high_bytes / len(data) < 0.05:
         score += 1.0
-
-    # Check 4: El texto decodificado parece español
-    try:
-        decoded = decode_plncg26(data)
-        spanish_chars = sum(1 for c in decoded if c.isalpha() or c.isspace())
-        if len(decoded) > 0 and spanish_chars / len(decoded) > 0.7:
-            score += 1.0
-    except Exception:
-        pass
 
     probability = score / total_checks
     typer.echo(f"{probability:.2f}")
