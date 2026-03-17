@@ -1,7 +1,3 @@
-# /// script
-# requires-python = ">=3.10"
-# ///
-
 from __future__ import annotations
 
 from dataclasses import dataclass
