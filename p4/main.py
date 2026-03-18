@@ -1,7 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections import Counter
+from dataclasses import dataclass, field
 from html import unescape
+import importlib
+import math
 from pathlib import Path
 import re
 import shutil
@@ -33,6 +36,7 @@ PATRONES_CONSULTA = (
 )
 RUTA_BASE = Path(__file__).resolve().parent
 RUTA_HTML = RUTA_BASE / "2000-h.htm"
+_RICH_CONSOLE = None
 
 
 @dataclass(frozen=True)
@@ -50,6 +54,8 @@ class Parrafo:
     posicion_en_seccion: int
     indice_simple: IndiceTexto
     indice_sin_tildes: IndiceTexto
+    lemas_normalizados: tuple[str, ...]
+    vector_tfidf: dict[str, float]
 
 
 @dataclass(frozen=True)
@@ -63,6 +69,8 @@ class Seccion:
 class CorpusQuijote:
     ruta_fuente: Path
     secciones: tuple[Seccion, ...]
+    vocabulario: tuple[str, ...] = ()
+    idf: dict[str, float] = field(default_factory=dict)
 
     @property
     def total_parrafos(self) -> int:
@@ -73,6 +81,7 @@ class CorpusQuijote:
 class CoincidenciaParrafo:
     parrafo: Parrafo
     spans: tuple[tuple[int, int], ...]
+    score: float
 
 
 @dataclass(frozen=True)
@@ -105,6 +114,251 @@ def normalizar_espacios(texto: str) -> str:
     return ESPACIOS_RE.sub(" ", texto).strip()
 
 
+def _obtener_consola_rich():
+    global _RICH_CONSOLE
+    if _RICH_CONSOLE is not None:
+        return _RICH_CONSOLE
+
+    try:
+        rich_console = importlib.import_module("rich.console")
+    except ModuleNotFoundError:
+        return None
+
+    _RICH_CONSOLE = rich_console.Console()
+    return _RICH_CONSOLE
+
+
+def ui_print(texto: str = "", *, style: str | None = None) -> None:
+    consola = _obtener_consola_rich()
+    if consola is None:
+        print(texto)
+        return
+    if style:
+        consola.print(texto, style=style)
+    else:
+        consola.print(texto)
+
+
+def ui_panel(texto: str, *, titulo: str, style: str = "cyan") -> None:
+    consola = _obtener_consola_rich()
+    if consola is None:
+        print()
+        print(titulo)
+        print("=" * min(len(titulo), ancho_terminal()))
+        print(texto)
+        return
+
+    rich_panel = importlib.import_module("rich.panel")
+    panel = rich_panel.Panel.fit(texto, title=titulo, border_style=style)
+    consola.print(panel)
+
+
+def ui_tabla_resultados(resultados: ResultadosBusqueda, *, limite: int) -> None:
+    if not resultados.coincidencias:
+        return
+
+    consola = _obtener_consola_rich()
+    if consola is None:
+        return
+
+    rich_table = importlib.import_module("rich.table")
+    tabla = rich_table.Table(title="Top resultados", show_lines=False)
+    tabla.add_column("#", justify="right", style="bold")
+    tabla.add_column("Score", justify="right", style="green")
+    tabla.add_column("Sección", style="cyan")
+    tabla.add_column("Fragmento", style="white")
+
+    for indice, coincidencia in enumerate(resultados.coincidencias[:limite], start=1):
+        fragmento, _ = recortar_fragmento(coincidencia.parrafo.texto, max_caracteres=120)
+        tabla.add_row(
+            str(indice),
+            f"{coincidencia.score:.4f}",
+            encabezado_seccion(coincidencia.parrafo),
+            fragmento,
+        )
+
+    consola.print(tabla)
+
+
+def _quitar_tildes(texto: str) -> str:
+    return "".join(
+        signo
+        for signo in unicodedata.normalize("NFD", texto)
+        if unicodedata.category(signo) != "Mn"
+    )
+
+
+_NLP = None
+
+
+def _obtener_nlp():
+    global _NLP
+    if _NLP is None:
+        try:
+            spacy = importlib.import_module("spacy")
+        except ModuleNotFoundError as error:
+            raise RuntimeError(
+                "spaCy no está disponible en este entorno. "
+                "Instala las dependencias declaradas en pyproject.toml usando uv sync."
+            ) from error
+
+        try:
+            _NLP = spacy.load("es_core_news_sm", disable=["parser", "ner", "textcat"])
+        except OSError as error:
+            raise RuntimeError(
+                "No se pudo cargar el modelo 'es_core_news_sm'. "
+                "El modelo debe estar declarado en pyproject.toml e instalado con uv sync."
+            ) from error
+    return _NLP
+
+
+def procesar_texto_spacy(texto: str, *, ignorar_tildes: bool = True) -> list[str]:
+    doc = _obtener_nlp()(texto)
+    lemas: list[str] = []
+
+    for token in doc:
+        if token.is_space or token.is_punct or token.is_stop:
+            continue
+
+        lema = token.lemma_.lower().strip()
+        if not lema or lema == "-pron-":
+            lema = token.lower_
+        if ignorar_tildes:
+            lema = _quitar_tildes(lema)
+        if not PALABRA_RE.search(lema):
+            continue
+        lemas.append(lema)
+
+    return lemas
+
+
+def _terminos_con_n_gramas(lemas: tuple[str, ...] | list[str]) -> Counter[str]:
+    contador: Counter[str] = Counter(lemas)
+
+    for indice in range(len(lemas) - 1):
+        bigrama = f"{lemas[indice]}_{lemas[indice + 1]}"
+        contador[bigrama] += 2
+
+    for indice in range(len(lemas) - 2):
+        trigrama = f"{lemas[indice]}_{lemas[indice + 1]}_{lemas[indice + 2]}"
+        contador[trigrama] += 3
+
+    return contador
+
+
+def construir_vocabulario(corpus: CorpusQuijote) -> tuple[str, ...]:
+    vocabulario: set[str] = set()
+    for seccion in corpus.secciones:
+        for parrafo in seccion.parrafos:
+            vocabulario.update(_terminos_con_n_gramas(parrafo.lemas_normalizados).keys())
+    return tuple(sorted(vocabulario))
+
+
+def calcular_tf(parrafo: Parrafo) -> dict[str, float]:
+    contador = _terminos_con_n_gramas(parrafo.lemas_normalizados)
+    total = sum(contador.values())
+    if total == 0:
+        return {}
+    return {termino: frecuencia / total for termino, frecuencia in contador.items()}
+
+
+def calcular_idf(corpus: CorpusQuijote) -> dict[str, float]:
+    total_documentos = corpus.total_parrafos
+    if total_documentos == 0:
+        return {}
+
+    frecuencia_documental: Counter[str] = Counter()
+    for seccion in corpus.secciones:
+        for parrafo in seccion.parrafos:
+            frecuencia_documental.update(set(_terminos_con_n_gramas(parrafo.lemas_normalizados).keys()))
+
+    return {
+        termino: math.log(total_documentos / documentos_con_termino)
+        for termino, documentos_con_termino in frecuencia_documental.items()
+    }
+
+
+def construir_vector_tfidf(parrafo: Parrafo, idf: dict[str, float]) -> dict[str, float]:
+    tf = calcular_tf(parrafo)
+    return {
+        termino: frecuencia * idf[termino]
+        for termino, frecuencia in tf.items()
+        if termino in idf
+    }
+
+
+def vector_consulta(
+    consulta: str,
+    idf: dict[str, float],
+    *,
+    ignorar_tildes: bool = True,
+) -> dict[str, float]:
+    lemas = tuple(procesar_texto_spacy(consulta, ignorar_tildes=ignorar_tildes))
+    if not lemas:
+        return {}
+
+    contador = _terminos_con_n_gramas(lemas)
+    total = sum(contador.values())
+    tf = {termino: frecuencia / total for termino, frecuencia in contador.items()}
+    return {termino: frecuencia * idf[termino] for termino, frecuencia in tf.items() if termino in idf}
+
+
+def similitud_coseno(vec1: dict[str, float], vec2: dict[str, float]) -> float:
+    if not vec1 or not vec2:
+        return 0.0
+
+    if len(vec1) > len(vec2):
+        vec1, vec2 = vec2, vec1
+
+    producto_punto = sum(valor * vec2.get(termino, 0.0) for termino, valor in vec1.items())
+    if producto_punto == 0.0:
+        return 0.0
+
+    norma_1 = math.sqrt(sum(valor * valor for valor in vec1.values()))
+    norma_2 = math.sqrt(sum(valor * valor for valor in vec2.values()))
+    if norma_1 == 0.0 or norma_2 == 0.0:
+        return 0.0
+
+    return producto_punto / (norma_1 * norma_2)
+
+
+def precalcular_tfidf(corpus: CorpusQuijote) -> CorpusQuijote:
+    idf = calcular_idf(corpus)
+    vocabulario = construir_vocabulario(corpus)
+    secciones_actualizadas: list[Seccion] = []
+
+    for seccion in corpus.secciones:
+        parrafos_actualizados: list[Parrafo] = []
+        for parrafo in seccion.parrafos:
+            parrafos_actualizados.append(
+                Parrafo(
+                    texto=parrafo.texto,
+                    titulo_seccion=parrafo.titulo_seccion,
+                    titulo_parte=parrafo.titulo_parte,
+                    indice_seccion=parrafo.indice_seccion,
+                    posicion_en_seccion=parrafo.posicion_en_seccion,
+                    indice_simple=parrafo.indice_simple,
+                    indice_sin_tildes=parrafo.indice_sin_tildes,
+                    lemas_normalizados=parrafo.lemas_normalizados,
+                    vector_tfidf=construir_vector_tfidf(parrafo, idf),
+                )
+            )
+        secciones_actualizadas.append(
+            Seccion(
+                titulo=seccion.titulo,
+                titulo_parte=seccion.titulo_parte,
+                parrafos=tuple(parrafos_actualizados),
+            )
+        )
+
+    return CorpusQuijote(
+        ruta_fuente=corpus.ruta_fuente,
+        secciones=tuple(secciones_actualizadas),
+        vocabulario=vocabulario,
+        idf=idf,
+    )
+
+
 def construir_indice(texto: str, *, quitar_tildes: bool) -> IndiceTexto:
     salida: list[str] = []
     mapa: list[int] = []
@@ -112,11 +366,7 @@ def construir_indice(texto: str, *, quitar_tildes: bool) -> IndiceTexto:
     for posicion, caracter in enumerate(texto):
         fragmento = caracter.lower()
         if quitar_tildes:
-            fragmento = "".join(
-                signo
-                for signo in unicodedata.normalize("NFD", fragmento)
-                if unicodedata.category(signo) != "Mn"
-            )
+            fragmento = _quitar_tildes(fragmento)
 
         for signo in fragmento:
             salida.append(signo)
@@ -188,6 +438,7 @@ def cargar_corpus_html(ruta_html: str | Path) -> CorpusQuijote:
     for indice_seccion, (titulo, titulo_parte, textos_parrafos) in enumerate(secciones_crudas):
         parrafos: list[Parrafo] = []
         for posicion_en_seccion, texto_parrafo in enumerate(textos_parrafos):
+            lemas = tuple(procesar_texto_spacy(texto_parrafo))
             parrafos.append(
                 Parrafo(
                     texto=texto_parrafo,
@@ -197,6 +448,8 @@ def cargar_corpus_html(ruta_html: str | Path) -> CorpusQuijote:
                     posicion_en_seccion=posicion_en_seccion,
                     indice_simple=construir_indice(texto_parrafo, quitar_tildes=False),
                     indice_sin_tildes=construir_indice(texto_parrafo, quitar_tildes=True),
+                    lemas_normalizados=lemas,
+                    vector_tfidf={},
                 )
             )
         secciones.append(
@@ -239,27 +492,40 @@ def buscar_en_corpus(
     if not consulta_limpia:
         raise ValueError("La consulta no puede estar vacía.")
 
-    indice_consulta = construir_indice(consulta_limpia, quitar_tildes=ignorar_tildes)
-    patron = _crear_patron(indice_consulta.clave)
+    consulta_tokens = procesar_texto_spacy(consulta_limpia, ignorar_tildes=ignorar_tildes)
+    if not consulta_tokens:
+        raise ValueError("La consulta se ha quedado vacía tras eliminar stopwords.")
+
+    consulta_normalizada = " ".join(consulta_tokens)
+    vec_consulta = vector_consulta(consulta_limpia, corpus.idf, ignorar_tildes=ignorar_tildes)
 
     coincidencias: list[CoincidenciaParrafo] = []
     resumenes: list[ResumenSeccion] = []
     total_apariciones = 0
+
+    if not vec_consulta:
+        return ResultadosBusqueda(
+            consulta=consulta_limpia,
+            consulta_normalizada=consulta_normalizada,
+            ignorar_tildes=ignorar_tildes,
+            total_apariciones=0,
+            coincidencias=(),
+            resumen_secciones=(),
+        )
 
     for seccion in corpus.secciones:
         apariciones_seccion = 0
         parrafos_con_coincidencias = 0
 
         for parrafo in seccion.parrafos:
-            indice = parrafo.indice_sin_tildes if ignorar_tildes else parrafo.indice_simple
-            spans = _buscar_spans(indice, patron)
-            if not spans:
+            score = similitud_coseno(vec_consulta, parrafo.vector_tfidf)
+            if score <= 0:
                 continue
 
-            apariciones_seccion += len(spans)
-            total_apariciones += len(spans)
+            apariciones_seccion += 1
+            total_apariciones += 1
             parrafos_con_coincidencias += 1
-            coincidencias.append(CoincidenciaParrafo(parrafo=parrafo, spans=spans))
+            coincidencias.append(CoincidenciaParrafo(parrafo=parrafo, spans=(), score=score))
 
         if apariciones_seccion:
             resumenes.append(
@@ -271,9 +537,11 @@ def buscar_en_corpus(
                 )
             )
 
+    coincidencias.sort(key=lambda item: item.score, reverse=True)
+
     return ResultadosBusqueda(
         consulta=consulta_limpia,
-        consulta_normalizada=indice_consulta.clave,
+        consulta_normalizada=consulta_normalizada,
         ignorar_tildes=ignorar_tildes,
         total_apariciones=total_apariciones,
         coincidencias=tuple(coincidencias),
@@ -326,9 +594,9 @@ def ancho_terminal() -> int:
 
 
 def imprimir_titulo(texto: str) -> None:
-    print()
-    print(texto)
-    print("=" * min(len(texto), ancho_terminal()))
+    ui_print()
+    ui_print(texto, style="bold cyan")
+    ui_print("=" * min(len(texto), ancho_terminal()), style="cyan")
 
 
 def envolver(texto: str, *, sangria: str = "", sangria_siguiente: str | None = None) -> str:
@@ -407,26 +675,31 @@ def encabezado_seccion(parrafo: Parrafo) -> str:
 
 
 def mostrar_menu(configuracion: ConfiguracionConsola) -> None:
-    print()
-    print("1. Buscar")
-    print(f"2. Cambiar modo de salida (actual: {MODO_ETIQUETAS[configuracion.modo_salida]})")
-    print(
-        f"3. Ajustes (tildes: {'sí' if configuracion.ignorar_tildes else 'no'}, "
-        f"límite: {configuracion.limite_resultados}, "
-        f"contexto: {configuracion.contexto_parrafos})"
+    estado = (
+        f"Modo: {MODO_ETIQUETAS[configuracion.modo_salida]}\n"
+        f"Tildes ignoradas: {'sí' if configuracion.ignorar_tildes else 'no'}\n"
+        f"Límite de resultados: {configuracion.limite_resultados}\n"
+        f"Párrafos de contexto: {configuracion.contexto_parrafos}\n\n"
+        "1) Buscar\n"
+        "2) Cambiar modo de salida\n"
+        "3) Ajustes\n"
+        "4) Repetir última búsqueda\n"
+        "5) Ayuda\n"
+        "0) Salir\n\n"
+        'Tip: también puedes escribir directamente la consulta, por ejemplo "dónde aparece dulcinea".'
     )
-    print("4. Repetir última búsqueda")
-    print("5. Ayuda")
-    print("0. Salir")
-    print('También puedes escribir directamente una consulta como "dónde aparece dulcinea".')
+    ui_panel(estado, titulo="Menú principal", style="blue")
 
 
 def mostrar_ayuda() -> None:
-    imprimir_titulo("Ayuda rápida")
-    print("La búsqueda no distingue mayúsculas y minúsculas.")
-    print("Por defecto también ignora tildes, pero puedes desactivarlo en ajustes.")
-    print("Consultas válidas: dulcinea, molinos, dónde aparece Sancho Panza.")
-    print("Modos disponibles: frase, párrafo, contexto, conteo y resumen por sección.")
+    texto = (
+        "La búsqueda no distingue mayúsculas y minúsculas.\n"
+        "Por defecto ignora tildes (configurable en ajustes).\n"
+        "Consultas válidas: dulcinea, molinos, dónde aparece Sancho Panza.\n"
+        "Motor: lematización + TF-IDF + similitud coseno.\n"
+        "Modos: frase, párrafo, contexto, conteo y resumen por sección."
+    )
+    ui_panel(texto, titulo="Ayuda rápida", style="magenta")
 
 
 def seleccionar_modo(configuracion: ConfiguracionConsola) -> None:
@@ -450,9 +723,9 @@ def seleccionar_modo(configuracion: ConfiguracionConsola) -> None:
     modo = opciones.get(eleccion)
     if modo:
         configuracion.modo_salida = modo
-        print(f"Modo actualizado a: {MODO_ETIQUETAS[modo]}")
+        ui_print(f"Modo actualizado a: {MODO_ETIQUETAS[modo]}", style="green")
     else:
-        print("No he reconocido ese modo.")
+        ui_print("No he reconocido ese modo.", style="yellow")
 
 
 def menu_ajustes(configuracion: ConfiguracionConsola) -> None:
@@ -486,7 +759,7 @@ def menu_ajustes(configuracion: ConfiguracionConsola) -> None:
                 valor_actual=configuracion.contexto_parrafos,
             )
             continue
-        print("Opción no válida.")
+        ui_print("Opción no válida.", style="yellow")
 
 
 def pedir_entero(mensaje: str, *, minimo: int, valor_actual: int) -> int:
@@ -495,17 +768,18 @@ def pedir_entero(mensaje: str, *, minimo: int, valor_actual: int) -> int:
         return valor_actual
     if valor.isdigit() and int(valor) >= minimo:
         return int(valor)
-    print("Valor no válido; mantengo el anterior.")
+    ui_print("Valor no válido; mantengo el anterior.", style="yellow")
     return valor_actual
 
 
 def mostrar_resumen_general(resultados: ResultadosBusqueda) -> None:
-    print()
-    print(f"Consulta interpretada: {resultados.consulta}")
-    print(
-        f"Apariciones totales: {resultados.total_apariciones} "
+    ui_print()
+    ui_print(f"Consulta interpretada: {resultados.consulta}", style="bold")
+    ui_print(
+        f"Resultados relevantes: {resultados.total_apariciones} "
         f"en {len(resultados.coincidencias)} párrafos y "
-        f"{len(resultados.resumen_secciones)} secciones."
+        f"{len(resultados.resumen_secciones)} secciones.",
+        style="green",
     )
 
     if resultados.resumen_secciones:
@@ -513,7 +787,9 @@ def mostrar_resumen_general(resultados: ResultadosBusqueda) -> None:
         resumen = ", ".join(
             f"{item.titulo} ({item.apariciones})" for item in primeras
         )
-        print(f"Primeras secciones con coincidencias: {resumen}")
+        ui_print(f"Primeras secciones con coincidencias: {resumen}", style="cyan")
+
+    ui_tabla_resultados(resultados, limite=min(5, len(resultados.coincidencias)))
 
 
 def mostrar_por_seccion(
@@ -523,14 +799,14 @@ def mostrar_por_seccion(
 ) -> None:
     imprimir_titulo("Resumen por sección")
     for indice, resumen in enumerate(resultados.resumen_secciones[:limite], start=1):
-        print(
+        ui_print(
             f"{indice}. {resumir_parte(resumen.titulo_parte)} | {resumen.titulo} "
             f"-> {resumen.apariciones} apariciones en "
             f"{resumen.parrafos_con_coincidencias} párrafos"
         )
 
     if len(resultados.resumen_secciones) > limite:
-        print(f"... hay {len(resultados.resumen_secciones) - limite} secciones más.")
+        ui_print(f"... hay {len(resultados.resumen_secciones) - limite} secciones más.", style="yellow")
 
 
 def mostrar_por_parrafo(
@@ -540,17 +816,18 @@ def mostrar_por_parrafo(
 ) -> None:
     imprimir_titulo("Coincidencias por párrafo")
     for indice, coincidencia in enumerate(resultados.coincidencias[:limite], start=1):
-        print(f"[{indice}] {encabezado_seccion(coincidencia.parrafo)}")
+        ui_print(f"[{indice}] Score: {coincidencia.score:.4f}", style="green")
+        ui_print(encabezado_seccion(coincidencia.parrafo), style="cyan")
         fragmento, spans = recortar_fragmento(
             coincidencia.parrafo.texto,
             coincidencia.spans,
             max_caracteres=430,
         )
-        print(envolver(resaltar_texto(fragmento, spans), sangria="  "))
-        print()
+        ui_print(envolver(resaltar_texto(fragmento, spans), sangria="  "))
+        ui_print()
 
     if len(resultados.coincidencias) > limite:
-        print(f"... hay {len(resultados.coincidencias) - limite} párrafos más.")
+        ui_print(f"... hay {len(resultados.coincidencias) - limite} párrafos más.", style="yellow")
 
 
 def _spans_relativos(
@@ -575,26 +852,33 @@ def mostrar_por_frase(
     mostradas = 0
 
     for coincidencia in resultados.coincidencias:
+        frase_mostrada = False
         for inicio, fin in fragmentar_en_frases(coincidencia.parrafo.texto):
             spans = _spans_relativos(coincidencia.spans, inicio, fin)
-            if not spans:
-                continue
-
             frase = coincidencia.parrafo.texto[inicio:fin].strip()
+            if not frase:
+                continue
             frase, spans = recortar_fragmento(frase, spans, max_caracteres=320)
             mostradas += 1
-            print(f"[{mostradas}] {encabezado_seccion(coincidencia.parrafo)}")
-            print(envolver(resaltar_texto(frase, spans), sangria="  "))
-            print()
-
-            if mostradas >= limite:
-                break
+            ui_print(f"[{mostradas}] Score: {coincidencia.score:.4f}", style="green")
+            ui_print(f"[{mostradas}] {encabezado_seccion(coincidencia.parrafo)}", style="cyan")
+            ui_print(envolver(resaltar_texto(frase, spans), sangria="  "))
+            ui_print()
+            frase_mostrada = True
+            break
+        if not frase_mostrada:
+            frase, _ = recortar_fragmento(coincidencia.parrafo.texto, max_caracteres=320)
+            mostradas += 1
+            ui_print(f"[{mostradas}] Score: {coincidencia.score:.4f}", style="green")
+            ui_print(f"[{mostradas}] {encabezado_seccion(coincidencia.parrafo)}", style="cyan")
+            ui_print(envolver(frase, sangria="  "))
+            ui_print()
         if mostradas >= limite:
             break
 
-    restantes = max(0, resultados.total_apariciones - mostradas)
+    restantes = max(0, len(resultados.coincidencias) - mostradas)
     if restantes:
-        print(f"... quedan al menos {restantes} apariciones sin mostrar.")
+        ui_print(f"... quedan {restantes} resultados sin mostrar.", style="yellow")
 
 
 def mostrar_por_contexto(
@@ -611,7 +895,8 @@ def mostrar_por_contexto(
         inicio = max(0, parrafo.posicion_en_seccion - contexto)
         fin = min(len(seccion.parrafos), parrafo.posicion_en_seccion + contexto + 1)
 
-        print(f"[{indice}] {encabezado_seccion(parrafo)}")
+        ui_print(f"[{indice}] Score: {coincidencia.score:.4f}", style="green")
+        ui_print(encabezado_seccion(parrafo), style="cyan")
         for posicion in range(inicio, fin):
             texto = seccion.parrafos[posicion].texto
             if posicion == parrafo.posicion_en_seccion:
@@ -627,11 +912,11 @@ def mostrar_por_contexto(
                 etiqueta = "    "
                 contenido = fragmento
 
-            print(envolver(contenido, sangria=etiqueta))
-        print()
+            ui_print(envolver(contenido, sangria=etiqueta))
+        ui_print()
 
     if len(resultados.coincidencias) > limite:
-        print(f"... hay {len(resultados.coincidencias) - limite} párrafos más.")
+        ui_print(f"... hay {len(resultados.coincidencias) - limite} párrafos más.", style="yellow")
 
 
 def mostrar_resultados(
@@ -670,14 +955,19 @@ def ejecutar_busqueda(
 ) -> str | None:
     consulta = extraer_consulta(consulta_bruta)
     if not consulta:
-        print("Necesito una palabra o expresión para buscar.")
+        ui_print("Necesito una palabra o expresión para buscar.", style="yellow")
         return None
 
-    resultados = buscar_en_corpus(
-        corpus,
-        consulta,
-        ignorar_tildes=configuracion.ignorar_tildes,
-    )
+    try:
+        resultados = buscar_en_corpus(
+            corpus,
+            consulta,
+            ignorar_tildes=configuracion.ignorar_tildes,
+        )
+    except ValueError as error:
+        ui_print(str(error), style="yellow")
+        return None
+
     mostrar_resultados(corpus, resultados, configuracion)
     return consulta
 
@@ -685,20 +975,18 @@ def ejecutar_busqueda(
 def cargar_corpus() -> CorpusQuijote:
     if not RUTA_HTML.exists():
         raise FileNotFoundError(f"No encuentro el archivo {RUTA_HTML.name}.")
-    return cargar_corpus_html(RUTA_HTML)
+    return precalcular_tfidf(cargar_corpus_html(RUTA_HTML))
 
 
 def bienvenida(corpus: CorpusQuijote, configuracion: ConfiguracionConsola) -> None:
-    imprimir_titulo("Buscador interactivo de El Quijote")
-    print(
+    texto = (
         f"Fuente: {corpus.ruta_fuente.name} | "
         f"secciones: {len(corpus.secciones)} | "
-        f"párrafos: {corpus.total_parrafos}"
-    )
-    print(
+        f"párrafos: {corpus.total_parrafos}\n"
         f"Modo inicial: {MODO_ETIQUETAS[configuracion.modo_salida]} | "
         f"tildes: {'ignoradas' if configuracion.ignorar_tildes else 'respetadas'}"
     )
+    ui_panel(texto, titulo="Buscador IR de El Quijote", style="green")
 
 
 def main() -> None:
@@ -717,7 +1005,7 @@ def main() -> None:
         entrada_minuscula = entrada.casefold()
 
         if entrada_minuscula in {"0", "salir", "exit", "q"}:
-            print("Hasta pronto.")
+            ui_print("Hasta pronto.", style="bold green")
             return
 
         if entrada_minuscula in {"1", "buscar"}:
@@ -741,7 +1029,7 @@ def main() -> None:
 
         if entrada_minuscula in {"4", "repetir", "ultima", "última"}:
             if not ultima_consulta:
-                print("Todavía no hay ninguna búsqueda previa.")
+                ui_print("Todavía no hay ninguna búsqueda previa.", style="yellow")
                 continue
             ejecutar_busqueda(corpus, configuracion, ultima_consulta)
             continue

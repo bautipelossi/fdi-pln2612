@@ -1,13 +1,29 @@
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
 [project]
-name = "p4"
-version = "0.1.0"
-description = "Add your description here"
+name = "fdi-pln-2612-p4"
+version = "1.0"
+description = "Practica 4 de PLN - Grupo 12"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "es-core-news-sm",
+    "rich>=13.9.4",
     "spacy>=3.8.11",
 ]
 
+[project.scripts]
+fdi-pln-2612-p4 = "main:main"
+
 [tool.uv.sources]
 es-core-news-sm = { url = "https://github.com/explosion/spacy-models/releases/download/es_core_news_sm-3.8.0/es_core_news_sm-3.8.0.tar.gz" }
+
+[tool.hatch.build.targets.wheel]
+include = [
+    "main.py",
+    "2000-h.htm",
+    "2000-desde-PROLOGO.txt",
+    "README.md",
+]
