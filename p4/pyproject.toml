@@ -15,15 +15,11 @@ dependencies = [
 ]
 
 [project.scripts]
-fdi-pln-2612-p4 = "main:main"
+fdi-pln-2612-p4 = "fdi_pln_2612_p4.main:main"
 
 [tool.uv.sources]
 es-core-news-sm = { url = "https://github.com/explosion/spacy-models/releases/download/es_core_news_sm-3.8.0/es_core_news_sm-3.8.0.tar.gz" }
 
 [tool.hatch.build.targets.wheel]
-include = [
-    "main.py",
-    "2000-h.htm",
-    "2000-desde-PROLOGO.txt",
-    "README.md",
-]
+packages = ["src/fdi_pln_2612_p4"]
+include = ["2000-h.htm", "2000-desde-PROLOGO.txt", "README.md"]
