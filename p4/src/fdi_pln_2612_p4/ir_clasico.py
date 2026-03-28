@@ -4,7 +4,7 @@ from collections import Counter
 import math
 
 from fdi_pln_2612_p4.modelos import CoincidenciaParrafo, CorpusQuijote, Parrafo, ResultadosBusqueda, ResumenSeccion, Seccion
-from fdi_pln_2612_p4.nlp_utils import normalizar_espacios, procesar_texto_spacy
+from fdi_pln_2612_p4.nlp_utils import normalizar_espacios, procesar_consulta_spacy
 
 
 def _terminos_con_n_gramas(lemas: tuple[str, ...] | list[str]) -> Counter[str]:
@@ -68,7 +68,13 @@ def vector_consulta(
     *,
     ignorar_tildes: bool = True,
 ) -> dict[str, float]:
-    lemas = tuple(procesar_texto_spacy(consulta, ignorar_tildes=ignorar_tildes))
+    lemas = tuple(
+        procesar_consulta_spacy(
+            consulta,
+            ignorar_tildes=ignorar_tildes,
+            idf=idf,
+        )
+    )
     if not lemas:
         return {}
 
@@ -116,6 +122,7 @@ def precalcular_tfidf(corpus: CorpusQuijote) -> CorpusQuijote:
                     indice_sin_tildes=parrafo.indice_sin_tildes,
                     lemas_normalizados=parrafo.lemas_normalizados,
                     vector_tfidf=construir_vector_tfidf(parrafo, idf),
+                    vector_semantico=parrafo.vector_semantico,
                 )
             )
         secciones_actualizadas.append(
@@ -144,7 +151,11 @@ def buscar_en_corpus(
     if not consulta_limpia:
         raise ValueError("La consulta no puede estar vacía.")
 
-    consulta_tokens = procesar_texto_spacy(consulta_limpia, ignorar_tildes=ignorar_tildes)
+    consulta_tokens = procesar_consulta_spacy(
+        consulta_limpia,
+        ignorar_tildes=ignorar_tildes,
+        idf=corpus.idf,
+    )
     if not consulta_tokens:
         raise ValueError("La consulta se ha quedado vacía tras eliminar stopwords.")
 

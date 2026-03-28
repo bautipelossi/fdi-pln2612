@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 import re
 import unicodedata
+from collections.abc import Mapping
 
 from fdi_pln_2612_p4.modelos import IndiceTexto
 
@@ -34,6 +35,39 @@ _NLP = None
 
 def normalizar_espacios(texto: str) -> str:
     return ESPACIOS_RE.sub(" ", texto).strip()
+
+
+def parece_titulo_breve(texto: str) -> bool:
+    texto_limpio = normalizar_espacios(texto)
+    if not texto_limpio:
+        return False
+
+    palabras = texto_limpio.split()
+    if len(texto_limpio) > 90 or len(palabras) > 12:
+        return False
+
+    return not any(signo in texto_limpio for signo in ".!?;:")
+
+
+def factor_calidad_texto(texto: str) -> float:
+    texto_limpio = normalizar_espacios(texto)
+    if not texto_limpio:
+        return 0.0
+
+    longitud = len(texto_limpio)
+    if longitud < 40:
+        factor = 0.45
+    elif longitud < 80:
+        factor = 0.62
+    elif longitud < 140:
+        factor = 0.82
+    else:
+        factor = 1.0
+
+    if parece_titulo_breve(texto_limpio):
+        factor *= 0.7
+
+    return factor
 
 
 def quitar_tildes(texto: str) -> str:
@@ -83,6 +117,44 @@ def procesar_texto_spacy(texto: str, *, ignorar_tildes: bool = True) -> list[str
         lemas.append(lema)
 
     return lemas
+
+
+def procesar_consulta_spacy(
+    texto: str,
+    *,
+    ignorar_tildes: bool = True,
+    idf: Mapping[str, float] | None = None,
+) -> list[str]:
+    doc = obtener_nlp()(texto)
+    terminos: list[str] = []
+
+    for token in doc:
+        if token.is_space or token.is_punct or token.is_stop:
+            continue
+
+        candidatos: list[str] = []
+        for candidato in (token.lemma_.lower().strip(), token.lower_):
+            if not candidato or candidato == "-pron-":
+                candidato = token.lower_
+            if ignorar_tildes:
+                candidato = quitar_tildes(candidato)
+            if not PALABRA_RE.search(candidato):
+                continue
+            if candidato not in candidatos:
+                candidatos.append(candidato)
+
+        if not candidatos:
+            continue
+
+        if idf:
+            candidatos_presentes = [candidato for candidato in candidatos if candidato in idf]
+            if candidatos_presentes:
+                terminos.append(min(candidatos_presentes, key=idf.__getitem__))
+                continue
+
+        terminos.append(candidatos[0])
+
+    return terminos
 
 
 def construir_indice(texto: str, *, quitar: bool) -> IndiceTexto:

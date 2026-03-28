@@ -12,8 +12,8 @@ Aplicación de terminal para recuperar información sobre el corpus de *Don Quij
 La aplicación ofrece tres motores seleccionables por el usuario:
 
 1. **Búsqueda clásica**: lematización + eliminación de stopwords + ranking TF-IDF.
-2. **Búsqueda semántica**: estructura preparada para embeddings (pendiente de implementación).
-3. **RAG**: estructura preparada para respuesta aumentada con recuperación (pendiente de implementación).
+2. **Búsqueda semántica**: embeddings densos con `spaCy` (`tok2vec`) y ranking por similitud coseno.
+3. **RAG**: recuperación híbrida (clásica + semántica) y respuesta extractiva basada en los pasajes recuperados.
 
 El flujo principal actual en modo clásico es:
 
@@ -34,8 +34,8 @@ src/fdi_pln_2612_p4/
 ├── corpus_loader.py # Parseo del HTML y construcción de CorpusQuijote
 ├── nlp_utils.py     # Preprocesado NLP (spaCy), normalización y utilidades de texto
 ├── ir_clasico.py    # Motor clásico: TF-IDF + similitud coseno + ranking
-├── embeddings.py    # Interfaz del motor semántico (placeholder)
-├── rag.py           # Interfaz de RAG (placeholder)
+├── embeddings.py    # Precálculo de embeddings y búsqueda semántica
+├── rag.py           # Recuperación híbrida y síntesis RAG
 └── ui_terminal.py   # TUI en terminal (menús, paneles, tablas y resultados)
 ```
 
@@ -47,8 +47,8 @@ src/fdi_pln_2612_p4/
 | `nlp_utils.py` | Lematiza, elimina stopwords y normaliza consulta/documentos con spaCy. |
 | `ir_clasico.py` | Calcula TF, IDF, vectores TF-IDF y ranking por similitud coseno. |
 | `ui_terminal.py` | Presenta TUI con menú, opciones de motor/modo y resultados con score. |
-| `embeddings.py` | Punto de extensión para búsqueda por embeddings. |
-| `rag.py` | Punto de extensión para respuesta con contexto recuperado. |
+| `embeddings.py` | Precalcula vectores densos por párrafo y ejecuta búsqueda semántica. |
+| `rag.py` | Fusiona recuperación clásica y semántica y construye una respuesta basada en evidencias. |
 
 ---
 
@@ -91,6 +91,16 @@ uv run fdi-pln-2612-p4
 5. Repetir última búsqueda
 6. Ayuda
 0. Salir
+
+### Probar cada motor
+
+1. Ejecuta `uv run fdi-pln-2612-p4`.
+2. En el menú principal, elige `2` para cambiar el motor.
+3. Selecciona:
+   - `1` para búsqueda clásica
+   - `2` para búsqueda semántica
+   - `3` para RAG
+4. Lanza la consulta con `1` o escribiéndola directamente.
 
 ### Ejemplos de consultas
 
@@ -135,4 +145,17 @@ uv run fdi-pln-2612-p4
     - similitud coseno entre vector de consulta y documentos
     - ordenación descendente por score de relevancia
     - devolución de pasajes con contexto y sección para interpretación.
+
+### 3. Búsqueda semántica
+
+- Precálculo de embeddings densos por párrafo usando el pipeline `tok2vec` ya disponible en `spaCy`.
+- Reutilización del mismo corpus segmentado por párrafos y del mismo flujo de `ResultadosBusqueda` que usa el modo clásico.
+- Ranking por similitud coseno sobre vectores densos y filtrado adaptativo para evitar devolver todo el corpus.
+
+### 4. RAG
+
+- Recuperación híbrida combinando los mejores resultados clásicos y semánticos.
+- Construcción de contexto a partir de los párrafos ya recuperados, sin cambiar la TUI.
+- Respuesta extractiva local basada exclusivamente en los pasajes recuperados.
+- El modo RAG actual no necesita claves externas ni dependencias adicionales.
 ---

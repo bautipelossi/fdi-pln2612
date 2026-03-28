@@ -191,7 +191,7 @@ def mostrar_ayuda() -> None:
         "La búsqueda no distingue mayúsculas y minúsculas.\n"
         "Por defecto ignora tildes (configurable en ajustes).\n"
         "Consultas válidas: dulcinea, molinos, dónde aparece Sancho Panza.\n"
-        "Motores: clásica, semántica y RAG (según implementación).\n"
+        "Motores: clásica, semántica y RAG.\n"
         "Presentación: frase, párrafo, contexto, conteo y resumen por sección."
     )
     ui_panel(texto, titulo="Ayuda rápida", style="magenta")

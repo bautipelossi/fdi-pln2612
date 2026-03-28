@@ -3,11 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from fdi_pln_2612_p4.corpus_loader import cargar_corpus_html
-from fdi_pln_2612_p4.embeddings import buscar_en_corpus_semantico
+from fdi_pln_2612_p4.embeddings import buscar_en_corpus_semantico, precalcular_embeddings
 from fdi_pln_2612_p4.ir_clasico import buscar_en_corpus, precalcular_tfidf
 from fdi_pln_2612_p4.modelos import ConfiguracionConsola, CorpusQuijote
 from fdi_pln_2612_p4.nlp_utils import extraer_consulta
-from fdi_pln_2612_p4.rag import responder_rag
+from fdi_pln_2612_p4.rag import preparar_contexto_rag, responder_rag
 from fdi_pln_2612_p4.ui_terminal import (
     bienvenida,
     menu_ajustes,
@@ -54,8 +54,18 @@ def ejecutar_busqueda(
                 consulta,
                 ignorar_tildes=configuracion.ignorar_tildes,
             )
-            mostrar_resultados(corpus, resultados_clasicos, configuracion)
-            respuesta = responder_rag(consulta, resultados_clasicos, None)
+            resultados_semanticos = buscar_en_corpus_semantico(
+                corpus,
+                consulta,
+                ignorar_tildes=configuracion.ignorar_tildes,
+            )
+            resultados_rag = preparar_contexto_rag(
+                corpus,
+                resultados_clasicos,
+                resultados_semanticos,
+            )
+            mostrar_resultados(corpus, resultados_rag, configuracion)
+            respuesta = responder_rag(consulta, resultados_rag)
             ui_print()
             ui_print("Respuesta RAG", style="bold magenta")
             ui_print(respuesta)
@@ -72,7 +82,8 @@ def ejecutar_busqueda(
 def cargar_corpus() -> CorpusQuijote:
     if not RUTA_HTML.exists():
         raise FileNotFoundError(f"No encuentro el archivo {RUTA_HTML.name}.")
-    return precalcular_tfidf(cargar_corpus_html(RUTA_HTML))
+    corpus = precalcular_tfidf(cargar_corpus_html(RUTA_HTML))
+    return precalcular_embeddings(corpus)
 
 
 def main() -> None:

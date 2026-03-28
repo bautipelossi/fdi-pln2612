@@ -21,6 +21,7 @@ class Parrafo:
     indice_sin_tildes: IndiceTexto
     lemas_normalizados: tuple[str, ...]
     vector_tfidf: dict[str, float]
+    vector_semantico: tuple[float, ...] = ()
 
 
 @dataclass(frozen=True)
