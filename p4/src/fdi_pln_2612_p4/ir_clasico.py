@@ -3,7 +3,15 @@ from __future__ import annotations
 from collections import Counter
 import math
 
-from fdi_pln_2612_p4.modelos import ChunkTexto, CoincidenciaParrafo, CorpusQuijote, Parrafo, ResultadosBusqueda, ResumenSeccion, Seccion
+from fdi_pln_2612_p4.modelos import (
+    ChunkTexto,
+    CoincidenciaParrafo,
+    CorpusQuijote,
+    Parrafo,
+    ResultadosBusqueda,
+    ResumenSeccion,
+    Seccion,
+)
 from fdi_pln_2612_p4.nlp_utils import normalizar_espacios, procesar_consulta_spacy
 
 
@@ -37,7 +45,9 @@ def _parrafo_representativo(
 
     seccion = corpus.secciones[unidad.indice_seccion]
     if not seccion.parrafos:
-        raise RuntimeError("Sección sin párrafos al buscar párrafo representativo de chunk.")
+        raise RuntimeError(
+            "Sección sin párrafos al buscar párrafo representativo de chunk."
+        )
 
     inicio = min(max(unidad.parrafo_inicio, 0), len(seccion.parrafos) - 1)
     fin = min(max(unidad.parrafo_fin + 1, inicio + 1), len(seccion.parrafos))
@@ -76,7 +86,9 @@ def calcular_idf(corpus: CorpusQuijote) -> dict[str, float]:
 
     frecuencia_documental: Counter[str] = Counter()
     for unidad in unidades:
-        frecuencia_documental.update(set(_terminos_con_n_gramas(unidad.lemas_normalizados).keys()))
+        frecuencia_documental.update(
+            set(_terminos_con_n_gramas(unidad.lemas_normalizados).keys())
+        )
 
     return {
         termino: math.log(total_documentos / documentos_con_termino)
@@ -84,7 +96,9 @@ def calcular_idf(corpus: CorpusQuijote) -> dict[str, float]:
     }
 
 
-def construir_vector_tfidf(lemas_normalizados: tuple[str, ...], idf: dict[str, float]) -> dict[str, float]:
+def construir_vector_tfidf(
+    lemas_normalizados: tuple[str, ...], idf: dict[str, float]
+) -> dict[str, float]:
     tf = calcular_tf(lemas_normalizados)
     return {
         termino: frecuencia * idf[termino]
@@ -112,7 +126,11 @@ def vector_consulta(
     contador = _terminos_con_n_gramas(lemas)
     total = sum(contador.values())
     tf = {termino: frecuencia / total for termino, frecuencia in contador.items()}
-    return {termino: frecuencia * idf[termino] for termino, frecuencia in tf.items() if termino in idf}
+    return {
+        termino: frecuencia * idf[termino]
+        for termino, frecuencia in tf.items()
+        if termino in idf
+    }
 
 
 def similitud_coseno(vec1: dict[str, float], vec2: dict[str, float]) -> float:
@@ -122,7 +140,9 @@ def similitud_coseno(vec1: dict[str, float], vec2: dict[str, float]) -> float:
     if len(vec1) > len(vec2):
         vec1, vec2 = vec2, vec1
 
-    producto_punto = sum(valor * vec2.get(termino, 0.0) for termino, valor in vec1.items())
+    producto_punto = sum(
+        valor * vec2.get(termino, 0.0) for termino, valor in vec1.items()
+    )
     if producto_punto == 0.0:
         return 0.0
 
@@ -152,7 +172,9 @@ def precalcular_tfidf(corpus: CorpusQuijote) -> CorpusQuijote:
                     indice_simple=parrafo.indice_simple,
                     indice_sin_tildes=parrafo.indice_sin_tildes,
                     lemas_normalizados=parrafo.lemas_normalizados,
-                    vector_tfidf=construir_vector_tfidf(parrafo.lemas_normalizados, idf),
+                    vector_tfidf=construir_vector_tfidf(
+                        parrafo.lemas_normalizados, idf
+                    ),
                     vector_semantico=parrafo.vector_semantico,
                 )
             )
@@ -209,7 +231,9 @@ def buscar_en_corpus(
         raise ValueError("La consulta se ha quedado vacía tras eliminar stopwords.")
 
     consulta_normalizada = " ".join(consulta_tokens)
-    vec_consulta = vector_consulta(consulta_limpia, corpus.idf, ignorar_tildes=ignorar_tildes)
+    vec_consulta = vector_consulta(
+        consulta_limpia, corpus.idf, ignorar_tildes=ignorar_tildes
+    )
 
     coincidencias: list[CoincidenciaParrafo] = []
     resumenes: list[ResumenSeccion] = []
@@ -248,7 +272,9 @@ def buscar_en_corpus(
 
     for indice_seccion, seccion in enumerate(corpus.secciones):
         coincidencias_seccion = [
-            item for item in coincidencias if item.parrafo.indice_seccion == indice_seccion
+            item
+            for item in coincidencias
+            if item.parrafo.indice_seccion == indice_seccion
         ]
         if not coincidencias_seccion:
             continue

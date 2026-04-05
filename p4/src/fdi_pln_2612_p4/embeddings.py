@@ -3,7 +3,10 @@ from __future__ import annotations
 import math
 from collections import Counter
 
-from fdi_pln_2612_p4.ir_clasico import similitud_coseno, vector_consulta as vector_consulta_tfidf
+from fdi_pln_2612_p4.ir_clasico import (
+    similitud_coseno,
+    vector_consulta as vector_consulta_tfidf,
+)
 from fdi_pln_2612_p4.modelos import (
     ChunkTexto,
     CoincidenciaParrafo,
@@ -36,13 +39,17 @@ def _iterar_unidades_semanticas(corpus: CorpusQuijote) -> list[ChunkTexto | Parr
     return [parrafo for seccion in corpus.secciones for parrafo in seccion.parrafos]
 
 
-def _parrafo_representativo(corpus: CorpusQuijote, unidad: ChunkTexto | Parrafo) -> Parrafo:
+def _parrafo_representativo(
+    corpus: CorpusQuijote, unidad: ChunkTexto | Parrafo
+) -> Parrafo:
     if isinstance(unidad, Parrafo):
         return unidad
 
     seccion = corpus.secciones[unidad.indice_seccion]
     if not seccion.parrafos:
-        raise RuntimeError("Sección sin párrafos al buscar párrafo representativo de chunk.")
+        raise RuntimeError(
+            "Sección sin párrafos al buscar párrafo representativo de chunk."
+        )
 
     inicio = min(max(unidad.parrafo_inicio, 0), len(seccion.parrafos) - 1)
     return seccion.parrafos[inicio]
@@ -56,7 +63,9 @@ def _texto_para_embedding_chunk(chunk: ChunkTexto) -> str:
     return " ".join(chunk.lemas_normalizados) or normalizar_espacios(chunk.texto)
 
 
-def _texto_para_embedding_consulta(consulta_limpia: str, consulta_tokens: list[str]) -> str:
+def _texto_para_embedding_consulta(
+    consulta_limpia: str, consulta_tokens: list[str]
+) -> str:
     return " ".join(consulta_tokens) or consulta_limpia
 
 
@@ -65,7 +74,10 @@ def _vector_de_doc(doc) -> tuple[float, ...]:
     if vector:
         return vector
 
-    if getattr(doc, "tensor", None) is not None and getattr(doc.tensor, "shape", ())[:1]:
+    if (
+        getattr(doc, "tensor", None) is not None
+        and getattr(doc.tensor, "shape", ())[:1]
+    ):
         return tuple(float(valor) for valor in doc.tensor.mean(axis=0).tolist())
 
     raise RuntimeError(
@@ -255,7 +267,9 @@ def buscar_en_corpus_semantico(
 
     puntuaciones: list[tuple[ChunkTexto | Parrafo, float, float, float]] = []
     for unidad in unidades:
-        score_denso = similitud_coseno_densa(vector_consulta_semantico, unidad.vector_semantico)
+        score_denso = similitud_coseno_densa(
+            vector_consulta_semantico, unidad.vector_semantico
+        )
         score_tfidf = similitud_coseno(vector_consulta_clasico, unidad.vector_tfidf)
         factor_calidad = factor_calidad_texto(unidad.texto)
         if score_denso <= 0.0 and score_tfidf <= 0.0:
@@ -300,7 +314,9 @@ def buscar_en_corpus_semantico(
     coincidencias.sort(key=lambda item: item.score, reverse=True)
     mejor_score = coincidencias[0].score
     umbral = max(UMBRAL_ABSOLUTO_SEMANTICO, mejor_score * FACTOR_UMBRAL_SEMANTICO)
-    relevantes = [item for item in coincidencias if item.score >= umbral][:MAX_RESULTADOS_SEMANTICOS]
+    relevantes = [item for item in coincidencias if item.score >= umbral][
+        :MAX_RESULTADOS_SEMANTICOS
+    ]
 
     if len(relevantes) < MIN_RESULTADOS_SEMANTICOS:
         relevantes = coincidencias[: min(MIN_RESULTADOS_SEMANTICOS, len(coincidencias))]

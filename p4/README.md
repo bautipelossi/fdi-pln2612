@@ -13,7 +13,7 @@ La aplicación ofrece tres motores seleccionables por el usuario:
 
 1. **Búsqueda clásica**: lematización + eliminación de stopwords + ranking TF-IDF.
 2. **Búsqueda semántica**: embeddings densos con `spaCy` (`tok2vec`) y ranking por similitud coseno.
-3. **RAG**: recuperación híbrida (clásica + semántica) y respuesta extractiva basada en los pasajes recuperados.
+3. **RAG**: recuperación híbrida (clásica + semántica) y respuesta generada con LLM local (`ollama`) basada en evidencias recuperadas.
 
 El flujo principal actual en modo clásico es:
 
@@ -60,6 +60,7 @@ src/fdi_pln_2612_p4/
 	- `spacy`
 	- `es-core-news-sm`
 	- `rich`
+    - `ollama`
 
 ---
 
@@ -71,6 +72,22 @@ uv sync
 ```
 
 No se requiere crear entornos manualmente ni descargar modelos con comandos separados: el modelo está declarado en `pyproject.toml`.
+
+Para usar RAG con LLM local, debes tener el servicio de Ollama activo y al menos un modelo instalado.
+
+### Preparación de Ollama para RAG
+
+1. Instalar Ollama en el sistema.
+2. Verificar que el servicio esté activo.
+3. Descargar al menos un modelo local, por ejemplo:
+
+```bash
+ollama pull llama3.2:3b
+```
+
+4. (Opcional) Seleccionar modelo con variable de entorno `RAG_OLLAMA_MODEL`.
+
+Si Ollama no está disponible, el modo RAG mantiene el funcionamiento con una respuesta extractiva local de respaldo.
 
 ---
 
@@ -107,6 +124,73 @@ uv run fdi-pln-2612-p4
 - `molinos de viento`
 - `dulcinea`
 - `dónde aparece Sancho Panza`
+
+### Configuración opcional de modelo RAG
+
+- Variable de entorno: `RAG_OLLAMA_MODEL`
+- Valor por defecto: `llama3.2:3b`
+
+Ejemplo en PowerShell:
+
+```powershell
+$env:RAG_OLLAMA_MODEL = "llama3.2:3b"
+uv run fdi-pln-2612-p4
+```
+
+### Comprobación rápida de RAG con LLM
+
+1. Ejecutar la app.
+2. Cambiar motor a RAG.
+3. Consultar, por ejemplo: `dulcinea`.
+4. Confirmar salida:
+    - Si el LLM responde correctamente, no aparece el aviso de fallback.
+    - Si aparece el aviso de fallback, revisar estado del servicio/modelo de Ollama.
+
+---
+
+## Checklist de entrega
+
+### Repositorio y documentación
+
+- README en la raíz con integrantes y guía de uso.
+- Historial de commits del equipo verificable.
+
+### Formato de código
+
+```bash
+uv format --check
+```
+
+Debe finalizar sin errores.
+
+### Ejecución
+
+```bash
+uv run fdi-pln-2612-p4
+```
+
+Debe iniciar correctamente en entorno local y en Linux de laboratorio.
+
+### Wheel
+
+```bash
+uv build
+```
+
+El artefacto queda en `dist/` y debe incluir ejecutable `fdi-pln-2612-p4`.
+
+### Datos y modelos
+
+- El repositorio incluye los datos necesarios del corpus.
+- No se incluyen modelos de IA pesados dentro del repositorio.
+- El preprocesado y construcción de índices/embeddings se puede regenerar bajo demanda por código.
+
+### Dependencias permitidas usadas en esta práctica
+
+- `spacy`
+- `es-core-news-sm`
+- `rich`
+- `ollama`
 
 ---
 
@@ -158,7 +242,13 @@ uv run fdi-pln-2612-p4
 ### 4. RAG
 
 - Recuperación híbrida combinando los mejores resultados clásicos y semánticos.
-- Construcción de contexto a partir de los pasajes recuperados sobre chunks, sin cambiar la TUI.
-- Respuesta extractiva local basada exclusivamente en los pasajes recuperados.
-- El modo RAG actual no necesita claves externas ni dependencias adicionales.
+- Construcción de contexto con evidencias recuperadas (fragmentos con referencia `[E1]`, `[E2]`, ...).
+- Generación de respuesta con LLM local vía `ollama`, restringida al contexto recuperado.
+- Fallback extractivo local si `ollama` no está disponible en ejecución.
+
+### 5. Cumplimiento operativo
+
+- Formato de código validado con `uv format --check`.
+- Ejecución principal por script de proyecto (`uv run fdi-pln-2612-p4`).
+- Arquitectura modular y preprocesado reproducible desde código.
 ---

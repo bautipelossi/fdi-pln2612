@@ -1,7 +1,15 @@
 from __future__ import annotations
 
+import os
+import importlib
+from typing import Any
+
 from fdi_pln_2612_p4.embeddings import construir_resultados_desde_coincidencias
-from fdi_pln_2612_p4.modelos import CoincidenciaParrafo, CorpusQuijote, ResultadosBusqueda
+from fdi_pln_2612_p4.modelos import (
+    CoincidenciaParrafo,
+    CorpusQuijote,
+    ResultadosBusqueda,
+)
 from fdi_pln_2612_p4.nlp_utils import (
     factor_calidad_texto,
     fragmentar_en_frases,
@@ -14,13 +22,16 @@ from fdi_pln_2612_p4.nlp_utils import (
 MAX_RESULTADOS_RAG = 8
 MAX_EVIDENCIAS_RAG = 4
 MAX_CARACTERES_FRAGMENTO = 240
+MODELO_OLLAMA_POR_DEFECTO = "llama3.2:3b"
 
 
 def _clave_parrafo(coincidencia: CoincidenciaParrafo) -> tuple[int, int]:
     return coincidencia.parrafo.indice_seccion, coincidencia.parrafo.posicion_en_seccion
 
 
-def _compactar_texto(texto: str, *, max_caracteres: int = MAX_CARACTERES_FRAGMENTO) -> str:
+def _compactar_texto(
+    texto: str, *, max_caracteres: int = MAX_CARACTERES_FRAGMENTO
+) -> str:
     texto_limpio = normalizar_espacios(texto)
     if len(texto_limpio) <= max_caracteres:
         return texto_limpio
@@ -48,7 +59,9 @@ def _combinar_coincidencias(
         mejor_score = coincidencias[0].score or 1.0
         peso_normalizado = peso / peso_total
 
-        for posicion, coincidencia in enumerate(coincidencias[:MAX_RESULTADOS_RAG], start=1):
+        for posicion, coincidencia in enumerate(
+            coincidencias[:MAX_RESULTADOS_RAG], start=1
+        ):
             clave = _clave_parrafo(coincidencia)
             score_reescalado = coincidencia.score / mejor_score
             bonus_ranking = 1.0 / (posicion + 1)
@@ -129,34 +142,101 @@ def _mejor_fragmento(texto: str, consulta_tokens: set[str]) -> str:
     return _compactar_texto(texto)
 
 
-def responder_rag(
-    consulta: str,
+def _construir_bloque_evidencias(
     resultados_recuperacion: ResultadosBusqueda,
+    consulta_tokens: set[str],
+) -> list[tuple[str, CoincidenciaParrafo, str, str]]:
+    evidencias: list[tuple[str, CoincidenciaParrafo, str, str]] = []
+    for indice, coincidencia in enumerate(
+        resultados_recuperacion.coincidencias[:MAX_EVIDENCIAS_RAG],
+        start=1,
+    ):
+        referencia = f"E{indice}"
+        encabezado = (
+            f"{resumir_parte(coincidencia.parrafo.titulo_parte)} | "
+            f"{coincidencia.parrafo.titulo_seccion}"
+        )
+        fragmento = _mejor_fragmento(coincidencia.parrafo.texto, consulta_tokens)
+        evidencias.append((referencia, coincidencia, encabezado, fragmento))
+    return evidencias
+
+
+def _prompt_rag(
+    consulta: str, evidencias: list[tuple[str, CoincidenciaParrafo, str, str]]
 ) -> str:
-    if not resultados_recuperacion.coincidencias:
-        return (
-            "No he recuperado contexto suficiente para responder con fiabilidad a esa consulta."
-        )
-
-    consulta_tokens = set(procesar_texto_spacy(consulta))
-    evidencias = [
-        (
-            coincidencia,
-            _mejor_fragmento(coincidencia.parrafo.texto, consulta_tokens),
-        )
-        for coincidencia in resultados_recuperacion.coincidencias[:MAX_EVIDENCIAS_RAG]
+    lineas = [
+        "Responde en espanol usando solamente la informacion de las evidencias.",
+        "Si no hay informacion suficiente, dilo explicitamente.",
+        "Incluye referencias en formato [E1], [E2], etc. junto a cada afirmacion relevante.",
+        "No inventes datos fuera de las evidencias.",
+        "",
+        f"Consulta del usuario: {consulta}",
+        "",
+        "Evidencias:",
     ]
+    for referencia, _, encabezado, fragmento in evidencias:
+        lineas.append(f"[{referencia}] {encabezado}: {fragmento}")
 
+    return "\n".join(lineas)
+
+
+def _generar_respuesta_ollama(prompt: str) -> str | None:
+    try:
+        ollama = importlib.import_module("ollama")
+    except ModuleNotFoundError:
+        return None
+
+    modelo = os.getenv("RAG_OLLAMA_MODEL", MODELO_OLLAMA_POR_DEFECTO)
+    try:
+        respuesta: Any = ollama.chat(
+            model=modelo,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "Eres un asistente de QA sobre El Quijote. "
+                        "Responde solo con evidencias proporcionadas y cita referencias [E#]."
+                    ),
+                },
+                {"role": "user", "content": prompt},
+            ],
+            options={"temperature": 0.1},
+        )
+    except Exception:
+        return None
+
+    if hasattr(respuesta, "model_dump"):
+        try:
+            respuesta = respuesta.model_dump()
+        except Exception:
+            pass
+
+    mensaje: Any = None
+    if isinstance(respuesta, dict):
+        mensaje = respuesta.get("message")
+    elif hasattr(respuesta, "message"):
+        mensaje = getattr(respuesta, "message")
+
+    contenido: Any = None
+    if isinstance(mensaje, dict):
+        contenido = mensaje.get("content")
+    elif hasattr(mensaje, "content"):
+        contenido = getattr(mensaje, "content")
+
+    if not isinstance(contenido, str):
+        return None
+    contenido_limpio = contenido.strip()
+    return contenido_limpio or None
+
+
+def _responder_extractivo(
+    resultados_recuperacion: ResultadosBusqueda,
+    evidencias: list[tuple[str, CoincidenciaParrafo, str, str]],
+) -> str:
     secciones_principales = ", ".join(
-        list(
-            dict.fromkeys(
-                f"{resumir_parte(coincidencia.parrafo.titulo_parte)} | "
-                f"{coincidencia.parrafo.titulo_seccion}"
-                for coincidencia, _ in evidencias
-            )
-        )[:3]
+        list(dict.fromkeys(encabezado for _, _, encabezado, _ in evidencias))[:3]
     )
-    sintesis = " ".join(fragmento for _, fragmento in evidencias[:3])
+    sintesis = " ".join(fragmento for _, _, _, fragmento in evidencias[:3])
 
     lineas = [
         "Respuesta basada solo en los pasajes recuperados:",
@@ -165,15 +245,39 @@ def responder_rag(
     if secciones_principales:
         lineas.append(f"Secciones principales: {secciones_principales}.")
     if sintesis:
-        lineas.append(f"Síntesis: {sintesis}")
-
-    lineas.append("")
-    lineas.append("Evidencias:")
-    for coincidencia, fragmento in evidencias:
-        encabezado = (
-            f"{resumir_parte(coincidencia.parrafo.titulo_parte)} | "
-            f"{coincidencia.parrafo.titulo_seccion}"
-        )
-        lineas.append(f"- {encabezado}: {fragmento}")
-
+        lineas.append(f"Sintesis: {sintesis}")
     return "\n".join(lineas)
+
+
+def _formatear_referencias(
+    evidencias: list[tuple[str, CoincidenciaParrafo, str, str]],
+) -> str:
+    lineas = ["", "Evidencias:"]
+    for referencia, _, encabezado, fragmento in evidencias:
+        lineas.append(f"- [{referencia}] {encabezado}: {fragmento}")
+    return "\n".join(lineas)
+
+
+def responder_rag(
+    consulta: str,
+    resultados_recuperacion: ResultadosBusqueda,
+) -> str:
+    if not resultados_recuperacion.coincidencias:
+        return "No he recuperado contexto suficiente para responder con fiabilidad a esa consulta."
+
+    consulta_tokens = set(procesar_texto_spacy(consulta))
+    evidencias = _construir_bloque_evidencias(resultados_recuperacion, consulta_tokens)
+    if not evidencias:
+        return "No he recuperado contexto suficiente para responder con fiabilidad a esa consulta."
+
+    prompt = _prompt_rag(consulta, evidencias)
+    respuesta_llm = _generar_respuesta_ollama(prompt)
+    if respuesta_llm:
+        return respuesta_llm + _formatear_referencias(evidencias)
+
+    respuesta_extractiva = _responder_extractivo(resultados_recuperacion, evidencias)
+    aviso = (
+        "\n\nAviso: no fue posible usar Ollama en este entorno. "
+        "Se devuelve una respuesta extractiva local como fallback."
+    )
+    return respuesta_extractiva + aviso + _formatear_referencias(evidencias)

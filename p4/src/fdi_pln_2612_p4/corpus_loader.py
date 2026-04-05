@@ -5,7 +5,12 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 
 from fdi_pln_2612_p4.modelos import ChunkTexto, CorpusQuijote, Parrafo, Seccion
-from fdi_pln_2612_p4.nlp_utils import MARCAS_PARTE, construir_indice, normalizar_espacios, procesar_texto_spacy
+from fdi_pln_2612_p4.nlp_utils import (
+    MARCAS_PARTE,
+    construir_indice,
+    normalizar_espacios,
+    procesar_texto_spacy,
+)
 
 
 TAMANO_CHUNK_TOKENS = 140
@@ -50,7 +55,10 @@ def construir_chunks_con_overlap(
                 parrafo = seccion.parrafos[fin]
                 lemas_parrafo = list(parrafo.lemas_normalizados)
 
-                if lemas_chunk and len(lemas_chunk) + len(lemas_parrafo) > tamano_tokens:
+                if (
+                    lemas_chunk
+                    and len(lemas_chunk) + len(lemas_parrafo) > tamano_tokens
+                ):
                     break
 
                 if not lemas_chunk and len(lemas_parrafo) > tamano_tokens:
@@ -90,7 +98,9 @@ def construir_chunks_con_overlap(
             tokens_a_conservar = overlap_tokens
             nuevo_inicio = fin - 1
             while nuevo_inicio > inicio and tokens_a_conservar > 0:
-                tokens_a_conservar -= len(seccion.parrafos[nuevo_inicio].lemas_normalizados)
+                tokens_a_conservar -= len(
+                    seccion.parrafos[nuevo_inicio].lemas_normalizados
+                )
                 nuevo_inicio -= 1
 
             inicio = max(inicio + 1, nuevo_inicio + 1)
@@ -150,7 +160,9 @@ def cargar_corpus_html(ruta_html: str | Path) -> CorpusQuijote:
     cerrar_seccion()
 
     secciones: list[Seccion] = []
-    for indice_seccion, (titulo, titulo_parte, textos_parrafos) in enumerate(secciones_crudas):
+    for indice_seccion, (titulo, titulo_parte, textos_parrafos) in enumerate(
+        secciones_crudas
+    ):
         parrafos: list[Parrafo] = []
         for posicion_en_seccion, texto_parrafo in enumerate(textos_parrafos):
             lemas = tuple(procesar_texto_spacy(texto_parrafo))

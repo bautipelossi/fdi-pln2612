@@ -3,7 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from fdi_pln_2612_p4.corpus_loader import cargar_corpus_html
-from fdi_pln_2612_p4.embeddings import buscar_en_corpus_semantico, precalcular_embeddings
+from fdi_pln_2612_p4.embeddings import (
+    buscar_en_corpus_semantico,
+    precalcular_embeddings,
+)
 from fdi_pln_2612_p4.ir_clasico import buscar_en_corpus, precalcular_tfidf
 from fdi_pln_2612_p4.modelos import ConfiguracionConsola, CorpusQuijote
 from fdi_pln_2612_p4.nlp_utils import extraer_consulta
@@ -116,7 +119,9 @@ def main() -> None:
             except KeyboardInterrupt:
                 ui_print("\nBúsqueda cancelada.", style="yellow")
                 continue
-            ultima_consulta = ejecutar_busqueda(corpus, configuracion, consulta) or ultima_consulta
+            ultima_consulta = (
+                ejecutar_busqueda(corpus, configuracion, consulta) or ultima_consulta
+            )
             continue
 
         if entrada_minuscula.startswith("buscar "):
@@ -157,7 +162,9 @@ def main() -> None:
             mostrar_ayuda()
             continue
 
-        ultima_consulta = ejecutar_busqueda(corpus, configuracion, entrada) or ultima_consulta
+        ultima_consulta = (
+            ejecutar_busqueda(corpus, configuracion, entrada) or ultima_consulta
+        )
 
 
 if __name__ == "__main__":

@@ -147,7 +147,9 @@ def procesar_consulta_spacy(
             continue
 
         if idf:
-            candidatos_presentes = [candidato for candidato in candidatos if candidato in idf]
+            candidatos_presentes = [
+                candidato for candidato in candidatos if candidato in idf
+            ]
             if candidatos_presentes:
                 forma_superficie = token.lower_
                 if ignorar_tildes:

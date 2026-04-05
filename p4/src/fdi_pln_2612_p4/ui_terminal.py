@@ -4,8 +4,17 @@ import importlib
 import shutil
 import textwrap
 
-from fdi_pln_2612_p4.modelos import ConfiguracionConsola, CorpusQuijote, Parrafo, ResultadosBusqueda
-from fdi_pln_2612_p4.nlp_utils import MODO_ETIQUETAS, fragmentar_en_frases, resumir_parte
+from fdi_pln_2612_p4.modelos import (
+    ConfiguracionConsola,
+    CorpusQuijote,
+    Parrafo,
+    ResultadosBusqueda,
+)
+from fdi_pln_2612_p4.nlp_utils import (
+    MODO_ETIQUETAS,
+    fragmentar_en_frases,
+    resumir_parte,
+)
 
 
 _RICH_CONSOLE = None
@@ -65,7 +74,9 @@ def imprimir_titulo(texto: str) -> None:
     ui_print("=" * min(len(texto), ancho_terminal()), style="cyan")
 
 
-def envolver(texto: str, *, sangria: str = "", sangria_siguiente: str | None = None) -> str:
+def envolver(
+    texto: str, *, sangria: str = "", sangria_siguiente: str | None = None
+) -> str:
     siguiente = sangria if sangria_siguiente is None else sangria_siguiente
     return textwrap.fill(
         texto,
@@ -156,7 +167,9 @@ def ui_tabla_resultados(resultados: ResultadosBusqueda, *, limite: int) -> None:
     tabla.add_column("Fragmento", style="white")
 
     for indice, coincidencia in enumerate(resultados.coincidencias[:limite], start=1):
-        fragmento, _ = recortar_fragmento(coincidencia.parrafo.texto, max_caracteres=120)
+        fragmento, _ = recortar_fragmento(
+            coincidencia.parrafo.texto, max_caracteres=120
+        )
         tabla.add_row(
             str(indice),
             f"{coincidencia.score:.4f}",
@@ -303,9 +316,7 @@ def mostrar_resumen_general(resultados: ResultadosBusqueda) -> None:
 
     if resultados.resumen_secciones:
         primeras = resultados.resumen_secciones[:3]
-        resumen = ", ".join(
-            f"{item.titulo} ({item.apariciones})" for item in primeras
-        )
+        resumen = ", ".join(f"{item.titulo} ({item.apariciones})" for item in primeras)
         ui_print(f"Primeras secciones con coincidencias: {resumen}", style="cyan")
 
     ui_tabla_resultados(resultados, limite=min(5, len(resultados.coincidencias)))
@@ -321,7 +332,10 @@ def mostrar_por_seccion(resultados: ResultadosBusqueda, *, limite: int) -> None:
         )
 
     if len(resultados.resumen_secciones) > limite:
-        ui_print(f"... hay {len(resultados.resumen_secciones) - limite} secciones más.", style="yellow")
+        ui_print(
+            f"... hay {len(resultados.resumen_secciones) - limite} secciones más.",
+            style="yellow",
+        )
 
 
 def mostrar_por_parrafo(resultados: ResultadosBusqueda, *, limite: int) -> None:
@@ -338,7 +352,10 @@ def mostrar_por_parrafo(resultados: ResultadosBusqueda, *, limite: int) -> None:
         ui_print()
 
     if len(resultados.coincidencias) > limite:
-        ui_print(f"... hay {len(resultados.coincidencias) - limite} párrafos más.", style="yellow")
+        ui_print(
+            f"... hay {len(resultados.coincidencias) - limite} párrafos más.",
+            style="yellow",
+        )
 
 
 def _spans_relativos(
@@ -350,7 +367,9 @@ def _spans_relativos(
     for span_inicio, span_fin in spans:
         if span_fin <= inicio or span_inicio >= fin:
             continue
-        relativos.append((max(span_inicio, inicio) - inicio, min(span_fin, fin) - inicio))
+        relativos.append(
+            (max(span_inicio, inicio) - inicio, min(span_fin, fin) - inicio)
+        )
     return tuple(relativos)
 
 
@@ -368,16 +387,24 @@ def mostrar_por_frase(resultados: ResultadosBusqueda, *, limite: int) -> None:
             frase, spans = recortar_fragmento(frase, spans, max_caracteres=320)
             mostradas += 1
             ui_print(f"[{mostradas}] Score: {coincidencia.score:.4f}", style="green")
-            ui_print(f"[{mostradas}] {encabezado_seccion(coincidencia.parrafo)}", style="cyan")
+            ui_print(
+                f"[{mostradas}] {encabezado_seccion(coincidencia.parrafo)}",
+                style="cyan",
+            )
             ui_print(envolver(resaltar_texto(frase, spans), sangria="  "))
             ui_print()
             frase_mostrada = True
             break
         if not frase_mostrada:
-            frase, _ = recortar_fragmento(coincidencia.parrafo.texto, max_caracteres=320)
+            frase, _ = recortar_fragmento(
+                coincidencia.parrafo.texto, max_caracteres=320
+            )
             mostradas += 1
             ui_print(f"[{mostradas}] Score: {coincidencia.score:.4f}", style="green")
-            ui_print(f"[{mostradas}] {encabezado_seccion(coincidencia.parrafo)}", style="cyan")
+            ui_print(
+                f"[{mostradas}] {encabezado_seccion(coincidencia.parrafo)}",
+                style="cyan",
+            )
             ui_print(envolver(frase, sangria="  "))
             ui_print()
         if mostradas >= limite:
@@ -423,7 +450,10 @@ def mostrar_por_contexto(
         ui_print()
 
     if len(resultados.coincidencias) > limite:
-        ui_print(f"... hay {len(resultados.coincidencias) - limite} párrafos más.", style="yellow")
+        ui_print(
+            f"... hay {len(resultados.coincidencias) - limite} párrafos más.",
+            style="yellow",
+        )
 
 
 def mostrar_resultados(
