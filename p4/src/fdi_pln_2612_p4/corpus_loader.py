@@ -4,8 +4,12 @@ from html import unescape
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-from fdi_pln_2612_p4.modelos import CorpusQuijote, Parrafo, Seccion
+from fdi_pln_2612_p4.modelos import ChunkTexto, CorpusQuijote, Parrafo, Seccion
 from fdi_pln_2612_p4.nlp_utils import MARCAS_PARTE, construir_indice, normalizar_espacios, procesar_texto_spacy
+
+
+TAMANO_CHUNK_TOKENS = 140
+OVERLAP_CHUNK_TOKENS = 40
 
 
 def _es_marca_de_parte(texto: str) -> bool:
@@ -14,6 +18,84 @@ def _es_marca_de_parte(texto: str) -> bool:
 
 def _texto_de_elemento(elemento: ET.Element) -> str:
     return normalizar_espacios("".join(elemento.itertext()))
+
+
+def construir_chunks_con_overlap(
+    secciones: tuple[Seccion, ...],
+    *,
+    tamano_tokens: int = TAMANO_CHUNK_TOKENS,
+    overlap_tokens: int = OVERLAP_CHUNK_TOKENS,
+) -> tuple[ChunkTexto, ...]:
+    if tamano_tokens <= 0:
+        raise ValueError("El tamaño de chunk debe ser mayor que cero.")
+    if overlap_tokens < 0:
+        raise ValueError("El overlap no puede ser negativo.")
+    if overlap_tokens >= tamano_tokens:
+        raise ValueError("El overlap debe ser menor que el tamaño de chunk.")
+
+    chunks: list[ChunkTexto] = []
+    siguiente_id = 1
+
+    for seccion in secciones:
+        if not seccion.parrafos:
+            continue
+
+        inicio = 0
+        while inicio < len(seccion.parrafos):
+            lemas_chunk: list[str] = []
+            textos_chunk: list[str] = []
+            fin = inicio
+
+            while fin < len(seccion.parrafos):
+                parrafo = seccion.parrafos[fin]
+                lemas_parrafo = list(parrafo.lemas_normalizados)
+
+                if lemas_chunk and len(lemas_chunk) + len(lemas_parrafo) > tamano_tokens:
+                    break
+
+                if not lemas_chunk and len(lemas_parrafo) > tamano_tokens:
+                    lemas_chunk = lemas_parrafo[:tamano_tokens]
+                    textos_chunk.append(parrafo.texto)
+                    fin += 1
+                    break
+
+                lemas_chunk.extend(lemas_parrafo)
+                textos_chunk.append(parrafo.texto)
+                fin += 1
+
+                if len(lemas_chunk) >= tamano_tokens:
+                    break
+
+            if not textos_chunk:
+                break
+
+            texto_chunk = normalizar_espacios(" ".join(textos_chunk))
+            chunks.append(
+                ChunkTexto(
+                    id_chunk=siguiente_id,
+                    texto=texto_chunk,
+                    lemas_normalizados=tuple(lemas_chunk),
+                    indice_seccion=seccion.parrafos[inicio].indice_seccion,
+                    titulo_seccion=seccion.titulo,
+                    titulo_parte=seccion.titulo_parte,
+                    parrafo_inicio=seccion.parrafos[inicio].posicion_en_seccion,
+                    parrafo_fin=seccion.parrafos[fin - 1].posicion_en_seccion,
+                )
+            )
+            siguiente_id += 1
+
+            if fin >= len(seccion.parrafos):
+                break
+
+            tokens_a_conservar = overlap_tokens
+            nuevo_inicio = fin - 1
+            while nuevo_inicio > inicio and tokens_a_conservar > 0:
+                tokens_a_conservar -= len(seccion.parrafos[nuevo_inicio].lemas_normalizados)
+                nuevo_inicio -= 1
+
+            inicio = max(inicio + 1, nuevo_inicio + 1)
+
+    return tuple(chunks)
 
 
 def cargar_corpus_html(ruta_html: str | Path) -> CorpusQuijote:
@@ -93,4 +175,6 @@ def cargar_corpus_html(ruta_html: str | Path) -> CorpusQuijote:
             )
         )
 
-    return CorpusQuijote(ruta_fuente=ruta, secciones=tuple(secciones))
+    secciones_finales = tuple(secciones)
+    chunks = construir_chunks_con_overlap(secciones_finales)
+    return CorpusQuijote(ruta_fuente=ruta, secciones=secciones_finales, chunks=chunks)

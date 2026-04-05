@@ -32,15 +32,34 @@ class Seccion:
 
 
 @dataclass(frozen=True)
+class ChunkTexto:
+    id_chunk: int
+    texto: str
+    lemas_normalizados: tuple[str, ...]
+    indice_seccion: int
+    titulo_seccion: str
+    titulo_parte: str | None
+    parrafo_inicio: int
+    parrafo_fin: int
+    vector_tfidf: dict[str, float] = field(default_factory=dict)
+    vector_semantico: tuple[float, ...] = ()
+
+
+@dataclass(frozen=True)
 class CorpusQuijote:
     ruta_fuente: Path
     secciones: tuple[Seccion, ...]
+    chunks: tuple[ChunkTexto, ...] = ()
     vocabulario: tuple[str, ...] = ()
     idf: dict[str, float] = field(default_factory=dict)
 
     @property
     def total_parrafos(self) -> int:
         return sum(len(seccion.parrafos) for seccion in self.secciones)
+
+    @property
+    def total_chunks(self) -> int:
+        return len(self.chunks)
 
 
 @dataclass(frozen=True)

@@ -5,6 +5,7 @@ from collections import Counter
 
 from fdi_pln_2612_p4.ir_clasico import similitud_coseno, vector_consulta as vector_consulta_tfidf
 from fdi_pln_2612_p4.modelos import (
+    ChunkTexto,
     CoincidenciaParrafo,
     CorpusQuijote,
     Parrafo,
@@ -29,8 +30,30 @@ PESO_SEMANTICO_DENSO = 0.75
 PESO_SEMANTICO_TFIDF = 0.25
 
 
+def _iterar_unidades_semanticas(corpus: CorpusQuijote) -> list[ChunkTexto | Parrafo]:
+    if corpus.chunks:
+        return list(corpus.chunks)
+    return [parrafo for seccion in corpus.secciones for parrafo in seccion.parrafos]
+
+
+def _parrafo_representativo(corpus: CorpusQuijote, unidad: ChunkTexto | Parrafo) -> Parrafo:
+    if isinstance(unidad, Parrafo):
+        return unidad
+
+    seccion = corpus.secciones[unidad.indice_seccion]
+    if not seccion.parrafos:
+        raise RuntimeError("Sección sin párrafos al buscar párrafo representativo de chunk.")
+
+    inicio = min(max(unidad.parrafo_inicio, 0), len(seccion.parrafos) - 1)
+    return seccion.parrafos[inicio]
+
+
 def _texto_para_embedding_parrafo(parrafo: Parrafo) -> str:
     return " ".join(parrafo.lemas_normalizados) or normalizar_espacios(parrafo.texto)
+
+
+def _texto_para_embedding_chunk(chunk: ChunkTexto) -> str:
+    return " ".join(chunk.lemas_normalizados) or normalizar_espacios(chunk.texto)
 
 
 def _texto_para_embedding_consulta(consulta_limpia: str, consulta_tokens: list[str]) -> str:
@@ -113,11 +136,14 @@ def construir_resultados_desde_coincidencias(
 
 
 def precalcular_embeddings(corpus: CorpusQuijote) -> CorpusQuijote:
-    textos = [
-        _texto_para_embedding_parrafo(parrafo)
-        for seccion in corpus.secciones
-        for parrafo in seccion.parrafos
-    ]
+    unidades = _iterar_unidades_semanticas(corpus)
+    textos: list[str] = []
+    for unidad in unidades:
+        if isinstance(unidad, ChunkTexto):
+            textos.append(_texto_para_embedding_chunk(unidad))
+        else:
+            textos.append(_texto_para_embedding_parrafo(unidad))
+
     if not textos:
         return corpus
 
@@ -128,9 +154,13 @@ def precalcular_embeddings(corpus: CorpusQuijote) -> CorpusQuijote:
     iterador_vectores = iter(vectores)
 
     secciones_actualizadas: list[Seccion] = []
+    chunks_actualizados: list[ChunkTexto] = []
     for seccion in corpus.secciones:
         parrafos_actualizados: list[Parrafo] = []
         for parrafo in seccion.parrafos:
+            vector_semantico = parrafo.vector_semantico
+            if not corpus.chunks:
+                vector_semantico = next(iterador_vectores)
             parrafos_actualizados.append(
                 Parrafo(
                     texto=parrafo.texto,
@@ -142,7 +172,7 @@ def precalcular_embeddings(corpus: CorpusQuijote) -> CorpusQuijote:
                     indice_sin_tildes=parrafo.indice_sin_tildes,
                     lemas_normalizados=parrafo.lemas_normalizados,
                     vector_tfidf=parrafo.vector_tfidf,
-                    vector_semantico=next(iterador_vectores),
+                    vector_semantico=vector_semantico,
                 )
             )
         secciones_actualizadas.append(
@@ -153,9 +183,26 @@ def precalcular_embeddings(corpus: CorpusQuijote) -> CorpusQuijote:
             )
         )
 
+    for chunk in corpus.chunks:
+        chunks_actualizados.append(
+            ChunkTexto(
+                id_chunk=chunk.id_chunk,
+                texto=chunk.texto,
+                lemas_normalizados=chunk.lemas_normalizados,
+                indice_seccion=chunk.indice_seccion,
+                titulo_seccion=chunk.titulo_seccion,
+                titulo_parte=chunk.titulo_parte,
+                parrafo_inicio=chunk.parrafo_inicio,
+                parrafo_fin=chunk.parrafo_fin,
+                vector_tfidf=chunk.vector_tfidf,
+                vector_semantico=next(iterador_vectores),
+            )
+        )
+
     return CorpusQuijote(
         ruta_fuente=corpus.ruta_fuente,
         secciones=tuple(secciones_actualizadas),
+        chunks=tuple(chunks_actualizados),
         vocabulario=corpus.vocabulario,
         idf=corpus.idf,
     )
@@ -179,7 +226,8 @@ def buscar_en_corpus_semantico(
     if not consulta_tokens:
         raise ValueError("La consulta se ha quedado vacía tras eliminar stopwords.")
 
-    if not corpus.secciones or not corpus.secciones[0].parrafos:
+    unidades = _iterar_unidades_semanticas(corpus)
+    if not unidades:
         return ResultadosBusqueda(
             consulta=consulta_limpia,
             consulta_normalizada=" ".join(consulta_tokens),
@@ -189,7 +237,7 @@ def buscar_en_corpus_semantico(
             resumen_secciones=(),
         )
 
-    if not corpus.secciones[0].parrafos[0].vector_semantico:
+    if not unidades[0].vector_semantico:
         raise RuntimeError(
             "El corpus no tiene embeddings precalculados. "
             "Ejecuta primero la preparación semántica del corpus."
@@ -205,17 +253,16 @@ def buscar_en_corpus_semantico(
         ignorar_tildes=ignorar_tildes,
     )
 
-    puntuaciones: list[tuple[Parrafo, float, float, float]] = []
-    for seccion in corpus.secciones:
-        for parrafo in seccion.parrafos:
-            score_denso = similitud_coseno_densa(vector_consulta_semantico, parrafo.vector_semantico)
-            score_tfidf = similitud_coseno(vector_consulta_clasico, parrafo.vector_tfidf)
-            factor_calidad = factor_calidad_texto(parrafo.texto)
-            if score_denso <= 0.0 and score_tfidf <= 0.0:
-                continue
-            if score_tfidf <= 0.0 and factor_calidad < 0.7:
-                continue
-            puntuaciones.append((parrafo, score_denso, score_tfidf, factor_calidad))
+    puntuaciones: list[tuple[ChunkTexto | Parrafo, float, float, float]] = []
+    for unidad in unidades:
+        score_denso = similitud_coseno_densa(vector_consulta_semantico, unidad.vector_semantico)
+        score_tfidf = similitud_coseno(vector_consulta_clasico, unidad.vector_tfidf)
+        factor_calidad = factor_calidad_texto(unidad.texto)
+        if score_denso <= 0.0 and score_tfidf <= 0.0:
+            continue
+        if score_tfidf <= 0.0 and factor_calidad < 0.7:
+            continue
+        puntuaciones.append((unidad, score_denso, score_tfidf, factor_calidad))
 
     if not puntuaciones:
         return ResultadosBusqueda(
@@ -230,22 +277,26 @@ def buscar_en_corpus_semantico(
     mejor_score_denso = max(score_denso for _, score_denso, _, _ in puntuaciones)
     mejor_score_tfidf = max(score_tfidf for _, _, score_tfidf, _ in puntuaciones)
 
-    coincidencias = [
-        CoincidenciaParrafo(
-            parrafo=parrafo,
-            spans=(),
-            score=(
-                (
-                    PESO_SEMANTICO_DENSO
-                    * (score_denso / mejor_score_denso if mejor_score_denso else 0.0)
-                    + PESO_SEMANTICO_TFIDF
-                    * (score_tfidf / mejor_score_tfidf if mejor_score_tfidf else 0.0)
-                )
-                * factor_calidad
-            ),
-        )
-        for parrafo, score_denso, score_tfidf, factor_calidad in puntuaciones
-    ]
+    mejores_por_parrafo: dict[tuple[int, int], CoincidenciaParrafo] = {}
+    for unidad, score_denso, score_tfidf, factor_calidad in puntuaciones:
+        score_hibrido = (
+            PESO_SEMANTICO_DENSO
+            * (score_denso / mejor_score_denso if mejor_score_denso else 0.0)
+            + PESO_SEMANTICO_TFIDF
+            * (score_tfidf / mejor_score_tfidf if mejor_score_tfidf else 0.0)
+        ) * factor_calidad
+
+        parrafo_ref = _parrafo_representativo(corpus, unidad)
+        clave = (parrafo_ref.indice_seccion, parrafo_ref.posicion_en_seccion)
+        anterior = mejores_por_parrafo.get(clave)
+        if anterior is None or score_hibrido > anterior.score:
+            mejores_por_parrafo[clave] = CoincidenciaParrafo(
+                parrafo=parrafo_ref,
+                spans=(),
+                score=score_hibrido,
+            )
+
+    coincidencias = list(mejores_por_parrafo.values())
     coincidencias.sort(key=lambda item: item.score, reverse=True)
     mejor_score = coincidencias[0].score
     umbral = max(UMBRAL_ABSOLUTO_SEMANTICO, mejor_score * FACTOR_UMBRAL_SEMANTICO)

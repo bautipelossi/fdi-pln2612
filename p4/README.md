@@ -18,8 +18,8 @@ La aplicación ofrece tres motores seleccionables por el usuario:
 El flujo principal actual en modo clásico es:
 
 1. Cargar y parsear el HTML del Quijote.
-2. Dividir en secciones y párrafos.
-3. Preprocesar párrafos con spaCy (lemas y stopwords).
+2. Dividir en secciones, párrafos y chunks con overlap.
+3. Preprocesar unidades recuperables con spaCy (lemas y stopwords).
 4. Precalcular estructura TF-IDF una sola vez.
 5. Procesar consulta y devolver resultados ordenados por relevancia.
 
@@ -43,11 +43,11 @@ src/fdi_pln_2612_p4/
 |---|---|
 | `main.py` | Gestiona menú, selección de motor y ciclo interactivo. |
 | `modelos.py` | Define estructuras tipadas para corpus, resultados y configuración. |
-| `corpus_loader.py` | Convierte el HTML del Quijote en secciones y párrafos estructurados. |
+| `corpus_loader.py` | Convierte el HTML del Quijote en secciones, párrafos y chunks con overlap. |
 | `nlp_utils.py` | Lematiza, elimina stopwords y normaliza consulta/documentos con spaCy. |
-| `ir_clasico.py` | Calcula TF, IDF, vectores TF-IDF y ranking por similitud coseno. |
+| `ir_clasico.py` | Calcula TF, IDF, vectores TF-IDF y ranking por similitud coseno sobre chunks. |
 | `ui_terminal.py` | Presenta TUI con menú, opciones de motor/modo y resultados con score. |
-| `embeddings.py` | Precalcula vectores densos por párrafo y ejecuta búsqueda semántica. |
+| `embeddings.py` | Precalcula vectores densos por chunk y ejecuta búsqueda semántica híbrida. |
 | `rag.py` | Fusiona recuperación clásica y semántica y construye una respuesta basada en evidencias. |
 
 ---
@@ -121,7 +121,8 @@ uv run fdi-pln-2612-p4
     - normalización para consulta y corpus
 - Segmentación del corpus en unidades recuperables:
     - división por secciones y párrafos del texto fuente
-    - cada párrafo funciona como documento del índice clásico
+    - construcción de chunks con ventana deslizante y overlap configurable
+    - cada chunk funciona como documento recuperable para IR clásico y semántico
 - Normalización lingüística alineada con IR clásico:
     - minúsculas para reducir variación superficial
     - manejo de tildes para mejorar recall en español
@@ -137,7 +138,7 @@ uv run fdi-pln-2612-p4
     - cálculo de frecuencia de término (TF) por documento
     - cálculo de frecuencia documental (DF)
     - cálculo de peso inverso (IDF = log(N / DF))
-    - vector TF-IDF para cada párrafo
+    - vector TF-IDF para cada chunk
 - Representación vectorial de consulta:
     - misma normalización que el corpus
     - construcción del vector TF-IDF de consulta en el mismo espacio
@@ -145,17 +146,19 @@ uv run fdi-pln-2612-p4
     - similitud coseno entre vector de consulta y documentos
     - ordenación descendente por score de relevancia
     - devolución de pasajes con contexto y sección para interpretación.
+    - deduplicación por párrafo representativo cuando múltiples chunks coinciden.
 
 ### 3. Búsqueda semántica
 
-- Precálculo de embeddings densos por párrafo usando el pipeline `tok2vec` ya disponible en `spaCy`.
-- Reutilización del mismo corpus segmentado por párrafos y del mismo flujo de `ResultadosBusqueda` que usa el modo clásico.
+- Precálculo de embeddings densos por chunk usando el pipeline `tok2vec` ya disponible en `spaCy`.
+- Reutilización del mismo corpus segmentado en chunks y del mismo flujo de `ResultadosBusqueda` que usa el modo clásico.
 - Ranking por similitud coseno sobre vectores densos y filtrado adaptativo para evitar devolver todo el corpus.
+- Score híbrido en semántico: combinación de similitud densa y señal TF-IDF del chunk.
 
 ### 4. RAG
 
 - Recuperación híbrida combinando los mejores resultados clásicos y semánticos.
-- Construcción de contexto a partir de los párrafos ya recuperados, sin cambiar la TUI.
+- Construcción de contexto a partir de los pasajes recuperados sobre chunks, sin cambiar la TUI.
 - Respuesta extractiva local basada exclusivamente en los pasajes recuperados.
 - El modo RAG actual no necesita claves externas ni dependencias adicionales.
 ---

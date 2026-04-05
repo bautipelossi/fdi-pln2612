@@ -94,8 +94,13 @@ def main() -> None:
     bienvenida(corpus, configuracion)
 
     while True:
-        mostrar_menu(configuracion)
-        entrada = input("quijote> ").strip()
+        try:
+            mostrar_menu(configuracion)
+            entrada = input("quijote> ").strip()
+        except KeyboardInterrupt:
+            ui_print("\nEntrada interrumpida. Escribe 0 para salir.", style="yellow")
+            continue
+
         if not entrada:
             continue
 
@@ -106,7 +111,11 @@ def main() -> None:
             return
 
         if entrada_minuscula in {"1", "buscar"}:
-            consulta = input("Consulta: ").strip()
+            try:
+                consulta = input("Consulta: ").strip()
+            except KeyboardInterrupt:
+                ui_print("\nBúsqueda cancelada.", style="yellow")
+                continue
             ultima_consulta = ejecutar_busqueda(corpus, configuracion, consulta) or ultima_consulta
             continue
 
@@ -117,15 +126,24 @@ def main() -> None:
             continue
 
         if entrada_minuscula in {"2", "motor", "busqueda", "búsqueda"}:
-            seleccionar_modo_busqueda(configuracion)
+            try:
+                seleccionar_modo_busqueda(configuracion)
+            except KeyboardInterrupt:
+                ui_print("\nSelección de motor cancelada.", style="yellow")
             continue
 
         if entrada_minuscula in {"3", "modo"}:
-            seleccionar_modo(configuracion)
+            try:
+                seleccionar_modo(configuracion)
+            except KeyboardInterrupt:
+                ui_print("\nSelección de modo cancelada.", style="yellow")
             continue
 
         if entrada_minuscula in {"4", "ajustes"}:
-            menu_ajustes(configuracion)
+            try:
+                menu_ajustes(configuracion)
+            except KeyboardInterrupt:
+                ui_print("\nAjustes cancelados.", style="yellow")
             continue
 
         if entrada_minuscula in {"5", "repetir", "ultima", "última"}:

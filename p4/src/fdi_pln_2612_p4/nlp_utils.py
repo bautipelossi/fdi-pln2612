@@ -149,7 +149,13 @@ def procesar_consulta_spacy(
         if idf:
             candidatos_presentes = [candidato for candidato in candidatos if candidato in idf]
             if candidatos_presentes:
-                terminos.append(min(candidatos_presentes, key=idf.__getitem__))
+                forma_superficie = token.lower_
+                if ignorar_tildes:
+                    forma_superficie = quitar_tildes(forma_superficie)
+                if forma_superficie in candidatos_presentes:
+                    terminos.append(forma_superficie)
+                else:
+                    terminos.append(candidatos_presentes[0])
                 continue
 
         terminos.append(candidatos[0])
@@ -175,6 +181,7 @@ def construir_indice(texto: str, *, quitar: bool) -> IndiceTexto:
 
 def extraer_consulta(texto: str) -> str:
     consulta = " ".join(texto.strip().split())
+    consulta = consulta.strip(" \"'«»¿?!.")
     while True:
         original = consulta
         for patron in PATRONES_CONSULTA:

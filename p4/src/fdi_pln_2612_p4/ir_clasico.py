@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import Counter
 import math
 
-from fdi_pln_2612_p4.modelos import CoincidenciaParrafo, CorpusQuijote, Parrafo, ResultadosBusqueda, ResumenSeccion, Seccion
+from fdi_pln_2612_p4.modelos import ChunkTexto, CoincidenciaParrafo, CorpusQuijote, Parrafo, ResultadosBusqueda, ResumenSeccion, Seccion
 from fdi_pln_2612_p4.nlp_utils import normalizar_espacios, procesar_consulta_spacy
 
 
@@ -21,16 +21,47 @@ def _terminos_con_n_gramas(lemas: tuple[str, ...] | list[str]) -> Counter[str]:
     return contador
 
 
+def _iterar_unidades(corpus: CorpusQuijote) -> list[ChunkTexto | Parrafo]:
+    if corpus.chunks:
+        return list(corpus.chunks)
+    return [parrafo for seccion in corpus.secciones for parrafo in seccion.parrafos]
+
+
+def _parrafo_representativo(
+    corpus: CorpusQuijote,
+    unidad: ChunkTexto | Parrafo,
+    vec_consulta: dict[str, float],
+) -> Parrafo:
+    if isinstance(unidad, Parrafo):
+        return unidad
+
+    seccion = corpus.secciones[unidad.indice_seccion]
+    if not seccion.parrafos:
+        raise RuntimeError("Sección sin párrafos al buscar párrafo representativo de chunk.")
+
+    inicio = min(max(unidad.parrafo_inicio, 0), len(seccion.parrafos) - 1)
+    fin = min(max(unidad.parrafo_fin + 1, inicio + 1), len(seccion.parrafos))
+
+    mejor_parrafo = seccion.parrafos[inicio]
+    mejor_score = similitud_coseno(vec_consulta, mejor_parrafo.vector_tfidf)
+    for parrafo in seccion.parrafos[inicio:fin]:
+        score = similitud_coseno(vec_consulta, parrafo.vector_tfidf)
+        if score > mejor_score:
+            mejor_parrafo = parrafo
+            mejor_score = score
+
+    return mejor_parrafo
+
+
 def construir_vocabulario(corpus: CorpusQuijote) -> tuple[str, ...]:
     vocabulario: set[str] = set()
-    for seccion in corpus.secciones:
-        for parrafo in seccion.parrafos:
-            vocabulario.update(_terminos_con_n_gramas(parrafo.lemas_normalizados).keys())
+    for unidad in _iterar_unidades(corpus):
+        vocabulario.update(_terminos_con_n_gramas(unidad.lemas_normalizados).keys())
     return tuple(sorted(vocabulario))
 
 
-def calcular_tf(parrafo: Parrafo) -> dict[str, float]:
-    contador = _terminos_con_n_gramas(parrafo.lemas_normalizados)
+def calcular_tf(lemas_normalizados: tuple[str, ...] | list[str]) -> dict[str, float]:
+    contador = _terminos_con_n_gramas(lemas_normalizados)
     total = sum(contador.values())
     if total == 0:
         return {}
@@ -38,14 +69,14 @@ def calcular_tf(parrafo: Parrafo) -> dict[str, float]:
 
 
 def calcular_idf(corpus: CorpusQuijote) -> dict[str, float]:
-    total_documentos = corpus.total_parrafos
+    unidades = _iterar_unidades(corpus)
+    total_documentos = len(unidades)
     if total_documentos == 0:
         return {}
 
     frecuencia_documental: Counter[str] = Counter()
-    for seccion in corpus.secciones:
-        for parrafo in seccion.parrafos:
-            frecuencia_documental.update(set(_terminos_con_n_gramas(parrafo.lemas_normalizados).keys()))
+    for unidad in unidades:
+        frecuencia_documental.update(set(_terminos_con_n_gramas(unidad.lemas_normalizados).keys()))
 
     return {
         termino: math.log(total_documentos / documentos_con_termino)
@@ -53,8 +84,8 @@ def calcular_idf(corpus: CorpusQuijote) -> dict[str, float]:
     }
 
 
-def construir_vector_tfidf(parrafo: Parrafo, idf: dict[str, float]) -> dict[str, float]:
-    tf = calcular_tf(parrafo)
+def construir_vector_tfidf(lemas_normalizados: tuple[str, ...], idf: dict[str, float]) -> dict[str, float]:
+    tf = calcular_tf(lemas_normalizados)
     return {
         termino: frecuencia * idf[termino]
         for termino, frecuencia in tf.items()
@@ -121,7 +152,7 @@ def precalcular_tfidf(corpus: CorpusQuijote) -> CorpusQuijote:
                     indice_simple=parrafo.indice_simple,
                     indice_sin_tildes=parrafo.indice_sin_tildes,
                     lemas_normalizados=parrafo.lemas_normalizados,
-                    vector_tfidf=construir_vector_tfidf(parrafo, idf),
+                    vector_tfidf=construir_vector_tfidf(parrafo.lemas_normalizados, idf),
                     vector_semantico=parrafo.vector_semantico,
                 )
             )
@@ -133,9 +164,27 @@ def precalcular_tfidf(corpus: CorpusQuijote) -> CorpusQuijote:
             )
         )
 
+    chunks_actualizados: list[ChunkTexto] = []
+    for chunk in corpus.chunks:
+        chunks_actualizados.append(
+            ChunkTexto(
+                id_chunk=chunk.id_chunk,
+                texto=chunk.texto,
+                lemas_normalizados=chunk.lemas_normalizados,
+                indice_seccion=chunk.indice_seccion,
+                titulo_seccion=chunk.titulo_seccion,
+                titulo_parte=chunk.titulo_parte,
+                parrafo_inicio=chunk.parrafo_inicio,
+                parrafo_fin=chunk.parrafo_fin,
+                vector_tfidf=construir_vector_tfidf(chunk.lemas_normalizados, idf),
+                vector_semantico=chunk.vector_semantico,
+            )
+        )
+
     return CorpusQuijote(
         ruta_fuente=corpus.ruta_fuente,
         secciones=tuple(secciones_actualizadas),
+        chunks=tuple(chunks_actualizados),
         vocabulario=vocabulario,
         idf=idf,
     )
@@ -176,29 +225,41 @@ def buscar_en_corpus(
             resumen_secciones=(),
         )
 
-    for seccion in corpus.secciones:
-        apariciones_seccion = 0
-        parrafos_con_coincidencias = 0
+    mejores_por_parrafo: dict[tuple[int, int], CoincidenciaParrafo] = {}
+    for unidad in _iterar_unidades(corpus):
+        score_unidad = similitud_coseno(vec_consulta, unidad.vector_tfidf)
+        if score_unidad <= 0:
+            continue
 
-        for parrafo in seccion.parrafos:
-            score = similitud_coseno(vec_consulta, parrafo.vector_tfidf)
-            if score <= 0:
-                continue
-
-            apariciones_seccion += 1
-            total_apariciones += 1
-            parrafos_con_coincidencias += 1
-            coincidencias.append(CoincidenciaParrafo(parrafo=parrafo, spans=(), score=score))
-
-        if apariciones_seccion:
-            resumenes.append(
-                ResumenSeccion(
-                    titulo=seccion.titulo,
-                    titulo_parte=seccion.titulo_parte,
-                    apariciones=apariciones_seccion,
-                    parrafos_con_coincidencias=parrafos_con_coincidencias,
-                )
+        parrafo_ref = _parrafo_representativo(corpus, unidad, vec_consulta)
+        score_parrafo = similitud_coseno(vec_consulta, parrafo_ref.vector_tfidf)
+        score_final = score_parrafo if score_parrafo > 0 else score_unidad
+        clave = (parrafo_ref.indice_seccion, parrafo_ref.posicion_en_seccion)
+        anterior = mejores_por_parrafo.get(clave)
+        if anterior is None or score_final > anterior.score:
+            mejores_por_parrafo[clave] = CoincidenciaParrafo(
+                parrafo=parrafo_ref,
+                spans=(),
+                score=score_final,
             )
+
+    coincidencias = list(mejores_por_parrafo.values())
+    total_apariciones = len(coincidencias)
+
+    for indice_seccion, seccion in enumerate(corpus.secciones):
+        coincidencias_seccion = [
+            item for item in coincidencias if item.parrafo.indice_seccion == indice_seccion
+        ]
+        if not coincidencias_seccion:
+            continue
+        resumenes.append(
+            ResumenSeccion(
+                titulo=seccion.titulo,
+                titulo_parte=seccion.titulo_parte,
+                apariciones=len(coincidencias_seccion),
+                parrafos_con_coincidencias=len(coincidencias_seccion),
+            )
+        )
 
     coincidencias.sort(key=lambda item: item.score, reverse=True)
 
