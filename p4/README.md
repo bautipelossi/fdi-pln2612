@@ -27,17 +27,49 @@ El flujo principal actual en modo clásico es:
 
 ## Arquitectura
 
+### Estructura general de la práctica (raíz del repositorio)
+
+```text
+p4/
+├── 2000-h.htm                  # Fuente principal del corpus (HTML de Gutenberg)
+├── 2000-desde-PROLOGO.txt      # Versión alternativa de texto plano del corpus
+├── pyproject.toml              # Metadata del proyecto, dependencias, script y build backend
+├── uv.lock                     # Lockfile reproducible de dependencias para uv
+├── README.md                   # Documentación de la práctica y guía de uso/entrega
+└── src/
+    └── fdi_pln_2612_p4/
+        ├── main.py
+        ├── modelos.py
+        ├── corpus_loader.py
+        ├── nlp_utils.py
+        ├── ir_clasico.py
+        ├── embeddings.py
+        ├── rag.py
+        └── ui_terminal.py
+```
+
+### Estructura del paquete ejecutable
+
 ```text
 src/fdi_pln_2612_p4/
 ├── main.py          # Punto de entrada y orquestación de la app
 ├── modelos.py       # Dataclasses de dominio (corpus, párrafos, resultados, config)
 ├── corpus_loader.py # Parseo del HTML y construcción de CorpusQuijote
-├── nlp_utils.py     # Preprocesado NLP (spaCy), normalización y utilidades de texto
+├── nlp_utils.py     # Preprocesado PLN (spaCy), normalización y utilidades de texto
 ├── ir_clasico.py    # Motor clásico: TF-IDF + similitud coseno + ranking
 ├── embeddings.py    # Precálculo de embeddings y búsqueda semántica
 ├── rag.py           # Recuperación híbrida y síntesis RAG
 └── ui_terminal.py   # TUI en terminal (menús, paneles, tablas y resultados)
 ```
+
+| Ruta raíz | Rol en la entrega |
+|---|---|
+| `2000-h.htm` | Corpus fuente incluido en la entrega. |
+| `2000-desde-PROLOGO.txt` | Recurso textual auxiliar del corpus. |
+| `pyproject.toml` | Configuración del proyecto, dependencias, script `uv run` y wheel. |
+| `uv.lock` | Congela versiones para reproducibilidad. |
+| `README.md` | Documentación pedida por consigna. |
+| `src/fdi_pln_2612_p4/` | Código fuente modular de la práctica. |
 
 | Módulo | Responsabilidad |
 |---|---|

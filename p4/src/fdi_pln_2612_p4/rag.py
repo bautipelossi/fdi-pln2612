@@ -38,10 +38,25 @@ def _compactar_texto(
     return texto_limpio[: max_caracteres - 4].rstrip() + " ..."
 
 
+def _cobertura_consulta(texto: str, consulta_tokens: set[str]) -> float:
+    if not consulta_tokens:
+        return 0.0
+
+    tokens_texto = set(procesar_texto_spacy(texto))
+    if not tokens_texto:
+        return 0.0
+
+    solapamiento = len(consulta_tokens.intersection(tokens_texto))
+    return solapamiento / len(consulta_tokens)
+
+
 def _combinar_coincidencias(
     resultados_clasicos: ResultadosBusqueda,
     resultados_semanticos: ResultadosBusqueda | None = None,
 ) -> list[CoincidenciaParrafo]:
+    consulta_tokens = set(resultados_clasicos.consulta_normalizada.split())
+    if not consulta_tokens:
+        consulta_tokens = set(procesar_texto_spacy(resultados_clasicos.consulta))
     motores: list[tuple[tuple[CoincidenciaParrafo, ...], float]] = []
     if resultados_clasicos.coincidencias:
         motores.append((resultados_clasicos.coincidencias, 0.55))
@@ -62,14 +77,30 @@ def _combinar_coincidencias(
         for posicion, coincidencia in enumerate(
             coincidencias[:MAX_RESULTADOS_RAG], start=1
         ):
+            cobertura_consulta = _cobertura_consulta(
+                coincidencia.parrafo.texto,
+                consulta_tokens,
+            )
+            # Para consultas cortas, exigimos que aparezca al menos un término clave.
+            if (
+                consulta_tokens
+                and len(consulta_tokens) <= 2
+                and cobertura_consulta == 0.0
+            ):
+                continue
+
             clave = _clave_parrafo(coincidencia)
             score_reescalado = coincidencia.score / mejor_score
             bonus_ranking = 1.0 / (posicion + 1)
             factor_calidad = factor_calidad_texto(coincidencia.parrafo.texto)
+            factor_consulta = (
+                0.65 + 0.35 * cobertura_consulta if consulta_tokens else 1.0
+            )
             score_final = (
                 peso_normalizado
                 * (0.85 * score_reescalado + 0.15 * bonus_ranking)
                 * factor_calidad
+                * factor_consulta
             )
 
             combinadas.setdefault(clave, coincidencia)
@@ -265,7 +296,9 @@ def responder_rag(
     if not resultados_recuperacion.coincidencias:
         return "No he recuperado contexto suficiente para responder con fiabilidad a esa consulta."
 
-    consulta_tokens = set(procesar_texto_spacy(consulta))
+    consulta_tokens = set(resultados_recuperacion.consulta_normalizada.split())
+    if not consulta_tokens:
+        consulta_tokens = set(procesar_texto_spacy(consulta))
     evidencias = _construir_bloque_evidencias(resultados_recuperacion, consulta_tokens)
     if not evidencias:
         return "No he recuperado contexto suficiente para responder con fiabilidad a esa consulta."
