@@ -1,82 +1,124 @@
-# Procesamiento de Lenguaje Natural 
-**Bautista Pelossi Schweizer · Ignacio Ramírez Suárez**  
-Facultad de Informática | Universidad Complutense de Madrid  
+# Procesamiento del Lenguaje Natural (PLN)
 
-[![Python](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
-[![Repo](https://img.shields.io/badge/github-bautipelossi%2Ffdi--pln2612-black.svg)](#)
+**Grupo 12**  
+**Bautista Pelossi Schweizer · Ignacio Ramirez Suarez**  
+Facultad de Informatica | Universidad Complutense de Madrid
+
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
+[![Repo](https://img.shields.io/badge/github-bautipelossi%2Ffdi--pln2612-black.svg)](https://github.com/bautipelossi/fdi-pln2612)
 
 > Repositorio con las actividades prácticas del curso **Procesamiento de Lenguaje Natural (PLN)**.  
 > Organización modular por práctica
 
----
+## Indice
 
-## Índice
-1. [Descripción](#descripcion)
-2. [Estructura del repositorio](#estructura)
-3. [Instalación](#instalacion)
+1. [Descripcion](#descripcion)
+2. [Estructura actual del repositorio](#estructura-actual-del-repositorio)
+3. [Guia rapida por practica](#guia-rapida-por-practica)
+4. [Como empezar](#como-empezar)
 5. [Autores](#autores)
 
----
+## Descripcion
 
-<a id="descripcion"></a>
-## Descripción
+Este repositorio contiene las practicas de la materia, cada una en su carpeta:
 
-Este repositorio organiza de forma **modular** las prácticas de PLN:
+- **P1**: agente autonomo para mercado de trueques (Butler) con toma de decisiones asistida por LLM local.
+- **P2**: trabajo de fonetica/sintesis por concatenacion de pangramas, con audios originales y sinteticos.
+- **P3**: script para codificar/decodificar ficheros entre UTF-8 y formato binario PLNCG26 utilizado en la asignatura.
+- **P4**: buscador IR sobre el corpus del Quijote con tres modos: clasico (TF/IDF), semantico (mediante **embeddings**) y **RAG**.
 
-- **Práctica 1 (P1):** Implementación de un **agente autónomo** que participa en un mercado de trueques coordinado por un servidor central (**Butler**). El agente debe negociar, responder ofertas, contraofertar y tomar decisiones estratégicas (usando LLM).
-- **Práctica 2 (P2):** Trabajo con **audios/pangramas**, edición y generación de audios sintéticos, y entrega estructurada según consigna.
-- **Práctica 3 (P3):** Implementación de un script de criptoglifos PLNCG26 capaz de convertir texto entre UTF-8 y el formato binario PLNCG26 utilizado en la asignatura. El script permite **codificar y decodificar ficheros** desde la línea de comandos y trabaja directamente con **bytes** para garantizar la correcta manipulación de los datos binarios. 
-
-
-Cada práctica tiene su **carpeta propia** y su **README.md** específico.
-
----
-
-<a id="estructura"></a>
-## Estructura del repositorio
+## Estructura actual del repositorio
 
 ```text
 fdi-pln2612/
-│
-├── p1/                              # Práctica 1: Agente Butler
-│   ├── README.md 
-│   ├── src/
-│   │   └── fdi_pln_2612_p1/
-│   │       ├── __init__.py
-│   │       ├── main.py
-│   │       ├── strategy.py
-│   │       ├── llm.py
-│   │       ├── protocol.py
-│   │       ├── models.py
-│   │       ├── http_client.py
-│   │       ├── butler_api.py
-│   │       └── config.py
-│   ├── pyproject.toml
-│   └── uv.lock
-│
-├── p2-g12/                          # Práctica 2: Pangramas y audios
+├── butler_local/                    # Entorno y utilidades locales para trabajo con Butler
+├── p1/                              # Practica 1: Agente de trueque Butler
 │   ├── README.md
-│   │
-│   ├── originales/                  # audios originales grabados
-│   │   ├── en_original_a.mp3
-│   │   ├── es_original_a.mp3
-│   │   ├── es_original_b.mp3
-│   │   └── es_secundaria_b.mp3
-│   │
-│   └── sinteticos/                  # audios generados / finales
-│       ├── en_sintetico_a.mp3
-│       ├── es_sintetico_a.mp3
-│       └── es_b.mp3
-│
-├── p3/                              # Práctica 3: Criptoglifos PLNCG26
-│   ├── fdi-pln-2612-p3.py           # script de codificación/decodificación
-│
-├── estado_butler.json               # archivo auxiliar de estado (usado en P1)
-├── .gitignore
-└── README.md                        # README principal del repositorio
+│   ├── pyproject.toml
+│   ├── uv.lock
+│   └── src/
+│       └── fdi_pln_2612_p1/
+│           ├── __init__.py
+│           ├── main.py
+│           ├── strategy.py
+│           ├── llm.py
+│           ├── protocol.py
+│           ├── models.py
+│           ├── http_client.py
+│           ├── butler_api.py
+│           └── config.py
+├── p2/                              # Practica 2: Audios y pangramas
+│   ├── README.md
+│   ├── originales/
+│   └── sinteticos/
+├── p3/                              # Practica 3: Criptoglifos PLNCG26
+│   └── fdi-pln-2612-p3.py
+├── p4/                              # Practica 4: IR sobre El Quijote
+│   ├── README.md
+│   ├── pyproject.toml
+│   ├── uv.lock
+│   └── src/
+│       └── fdi_pln_2612_p4/
+│           ├── __init__.py
+│           ├── data/
+│           │   ├── __init__.py
+│           │   ├── 2000-h.htm
+│           │   └── 2000-desde-PROLOGO.txt
+│           ├── main.py
+│           ├── modelos.py
+│           ├── corpus_loader.py
+│           ├── nlp_utils.py
+│           ├── ir_clasico.py
+│           ├── embeddings.py
+│           ├── rag.py
+│           └── ui_terminal.py
+└── README.md
 ```
 
-<a id="instalacion"></a>
+## Guia rapida por practica
+
+### P1 - Agente Butler
+
+- Documentacion: `p1/README.md`
+- Requisitos: Python >= 3.11, `uv`, Ollama y acceso al Butler de clase.
+- Ejecucion rapida:
+
+```bash
+cd p1
+uv sync
+uv run fdi-pln-2612-p1
+```
+
+### P2 - Audio y sintesis por concatenacion
+
+- Documentacion: `p2/README.md`
+- Contenido principal:
+	- `p2/originales/` (grabaciones fuente)
+	- `p2/sinteticos/` (resultados finales)
+
+### P3 - Criptoglifos PLNCG26
+
+- Script principal: `p3/fdi-pln-2612-p3.py`
+- Dependencia: `typer` (declarada en cabecera del script).
+- Ejemplos de uso:
+
+```bash
+python p3/fdi-pln-2612-p3.py decode archivo.plncg26 > salida.txt
+python p3/fdi-pln-2612-p3.py encode entrada.txt > salida.plncg26
+python p3/fdi-pln-2612-p3.py detect archivo.bin
+```
+
+### P4 - Buscador IR del Quijote
+
+- Documentacion: `p4/README.md`
+- Requisitos: Python >= 3.12, `uv`.
+- Ejecucion rapida:
+
+```bash
+cd p4
+uv sync
+uv run fdi-pln-2612-p4
+```
 ## Instalación
 
 ### A) Clonar el repositorio
@@ -87,7 +129,8 @@ cd fdi-pln2612
 ### B) Instalar dependencias de cada práctica
 Buscar las dependencias correspondientes a cada practica en su README.me
 
+
 ## Autores
 
-- **Bautista Pelossi Schweizer**
-- **Ignacio Ramírez Suárez**
+- Bautista Pelossi Schweizer
+- Ignacio Ramirez Suarez

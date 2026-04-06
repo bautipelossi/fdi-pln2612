@@ -50,7 +50,15 @@ p4/
         └── ui_terminal.py
 ```
 
-### Estructura del paquete ejecutable
+| Ruta raíz | Rol en la entrega |
+|---|---|
+| `pyproject.toml` | Configuración del proyecto, dependencias, script `uv run` y wheel. |
+| `uv.lock` | Congela versiones para reproducibilidad. |
+| `README.md` | Documentación pedida por consigna. |
+| `src/fdi_pln_2612_p4/` | Código fuente modular de la práctica. |
+| `src/fdi_pln_2612_p4/data/` | Datos empaquetados dentro del wheel para que el ejecutable funcione también instalado. |
+
+### Estructura del código fuente 
 
 ```text
 src/fdi_pln_2612_p4/
@@ -63,14 +71,6 @@ src/fdi_pln_2612_p4/
 ├── rag.py           # Recuperación híbrida y síntesis RAG
 └── ui_terminal.py   # TUI en terminal (menús, paneles, tablas y resultados)
 ```
-
-| Ruta raíz | Rol en la entrega |
-|---|---|
-| `pyproject.toml` | Configuración del proyecto, dependencias, script `uv run` y wheel. |
-| `uv.lock` | Congela versiones para reproducibilidad. |
-| `README.md` | Documentación pedida por consigna. |
-| `src/fdi_pln_2612_p4/` | Código fuente modular de la práctica. |
-| `src/fdi_pln_2612_p4/data/` | Datos empaquetados dentro del wheel para que el ejecutable funcione también instalado. |
 
 | Módulo | Responsabilidad |
 |---|---|
@@ -166,10 +166,8 @@ uv run fdi-pln-2612-p4
 - Variable de entorno: `RAG_OLLAMA_MODEL`
 - Valor por defecto: `llama3.2:3b`
 
-Ejemplo en PowerShell:
-
-```powershell
-$env:RAG_OLLAMA_MODEL = "llama3.2:3b"
+```bash
+RAG_OLLAMA_MODEL="llama3.2:3b"
 uv run fdi-pln-2612-p4
 ```
 
