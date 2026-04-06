@@ -250,8 +250,10 @@ wheels = [
 [[package]]
 name = "es-core-news-sm"
 version = "3.8.0"
-source = { url = "https://github.com/explosion/spacy-models/releases/download/es_core_news_sm-3.8.0/es_core_news_sm-3.8.0.tar.gz" }
-sdist = { hash = "sha256:f13c93ee56937f2024ce2836f3726bf56bd85589237e9894d97b650bb0546bd9" }
+source = { url = "https://github.com/explosion/spacy-models/releases/download/es_core_news_sm-3.8.0/es_core_news_sm-3.8.0-py3-none-any.whl" }
+wheels = [
+    { url = "https://github.com/explosion/spacy-models/releases/download/es_core_news_sm-3.8.0/es_core_news_sm-3.8.0-py3-none-any.whl", hash = "sha256:e451a83d6df79b87e9eed0cb553f03e99e36a3bab18a7b79f0dcfd1fdf875e12" },
+]
 
 [[package]]
 name = "fdi-pln-2612-p4"
@@ -266,7 +268,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "es-core-news-sm", url = "https://github.com/explosion/spacy-models/releases/download/es_core_news_sm-3.8.0/es_core_news_sm-3.8.0.tar.gz" },
+    { name = "es-core-news-sm", url = "https://github.com/explosion/spacy-models/releases/download/es_core_news_sm-3.8.0/es_core_news_sm-3.8.0-py3-none-any.whl" },
     { name = "ollama", specifier = ">=0.5.1" },
     { name = "rich", specifier = ">=13.9.4" },
     { name = "spacy", specifier = ">=3.8.11" },

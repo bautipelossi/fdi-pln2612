@@ -31,13 +31,15 @@ El flujo principal actual en modo clásico es:
 
 ```text
 p4/
-├── 2000-h.htm                  # Fuente principal del corpus (HTML de Gutenberg)
-├── 2000-desde-PROLOGO.txt      # Versión alternativa de texto plano del corpus
 ├── pyproject.toml              # Metadata del proyecto, dependencias, script y build backend
 ├── uv.lock                     # Lockfile reproducible de dependencias para uv
 ├── README.md                   # Documentación de la práctica y guía de uso/entrega
 └── src/
     └── fdi_pln_2612_p4/
+        ├── data/
+        │   ├── __init__.py
+        │   ├── 2000-h.htm
+        │   └── 2000-desde-PROLOGO.txt
         ├── main.py
         ├── modelos.py
         ├── corpus_loader.py
@@ -64,16 +66,16 @@ src/fdi_pln_2612_p4/
 
 | Ruta raíz | Rol en la entrega |
 |---|---|
-| `2000-h.htm` | Corpus fuente incluido en la entrega. |
-| `2000-desde-PROLOGO.txt` | Recurso textual auxiliar del corpus. |
 | `pyproject.toml` | Configuración del proyecto, dependencias, script `uv run` y wheel. |
 | `uv.lock` | Congela versiones para reproducibilidad. |
 | `README.md` | Documentación pedida por consigna. |
 | `src/fdi_pln_2612_p4/` | Código fuente modular de la práctica. |
+| `src/fdi_pln_2612_p4/data/` | Datos empaquetados dentro del wheel para que el ejecutable funcione también instalado. |
 
 | Módulo | Responsabilidad |
 |---|---|
 | `main.py` | Gestiona menú, selección de motor y ciclo interactivo. |
+| `data/` | Contiene el corpus y recursos textuales empaquetados como parte del paquete Python. |
 | `modelos.py` | Define estructuras tipadas para corpus, resultados y configuración. |
 | `corpus_loader.py` | Convierte el HTML del Quijote en secciones, párrafos y chunks con overlap. |
 | `nlp_utils.py` | Lematiza, elimina stopwords y normaliza consulta/documentos con spaCy. |
@@ -104,6 +106,8 @@ uv sync
 ```
 
 No se requiere crear entornos manualmente ni descargar modelos con comandos separados: el modelo está declarado en `pyproject.toml`.
+
+Los datos del corpus se cargan desde `importlib.resources`, por lo que el ejecutable funciona tanto desde el repositorio como desde el wheel instalado.
 
 Para usar RAG con LLM local, debes tener el servicio de Ollama activo y al menos un modelo instalado.
 
@@ -171,12 +175,35 @@ uv run fdi-pln-2612-p4
 
 ### Comprobación rápida de RAG con LLM
 
-1. Ejecutar la app.
-2. Cambiar motor a RAG.
-3. Consultar, por ejemplo: `dulcinea`.
-4. Confirmar salida:
+1. Verificar que Ollama tiene un modelo disponible:
+
+```bash
+ollama list
+```
+
+2. Ejecutar la app con un modelo explícito:
+
+```bash
+RAG_OLLAMA_MODEL=llama3.2:3b uv run fdi-pln-2612-p4
+```
+
+3. Cambiar motor a RAG.
+4. Consultar, por ejemplo: `dulcinea`.
+5. Confirmar salida:
     - Si el LLM responde correctamente, no aparece el aviso de fallback.
     - Si aparece el aviso de fallback, revisar estado del servicio/modelo de Ollama.
+
+Verificación local realizada sobre este proyecto:
+
+- Servicio `ollama` accesible.
+- Modelo disponible: `llama3.2:3b`.
+- Consulta comprobada: `dulcinea`.
+- Resultado esperado y verificado: respuesta con referencias `[E#]` y sin el aviso de fallback.
+
+Comprobación explícita:
+
+- La salida correcta con LLM no debe incluir el texto `Aviso: no fue posible usar Ollama en este entorno. Se devuelve una respuesta extractiva local como fallback.`
+- Si ese aviso aparece, la respuesta no ha usado el camino RAG con LLM real.
 
 ---
 
@@ -209,11 +236,11 @@ Debe iniciar correctamente en entorno local y en Linux de laboratorio.
 uv build
 ```
 
-El artefacto queda en `dist/` y debe incluir ejecutable `fdi-pln-2612-p4`.
+El artefacto queda en `dist/`, incluye el ejecutable `fdi-pln-2612-p4` y empaqueta los datos del corpus dentro del paquete.
 
 ### Datos y modelos
 
-- El repositorio incluye los datos necesarios del corpus.
+- El paquete incluye los datos necesarios del corpus bajo `src/fdi_pln_2612_p4/data/`.
 - No se incluyen modelos de IA pesados dentro del repositorio.
 - El preprocesado y construcción de índices/embeddings se puede regenerar bajo demanda por código.
 

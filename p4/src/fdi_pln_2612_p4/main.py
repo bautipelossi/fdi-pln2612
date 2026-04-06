@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pathlib import Path
+from importlib import resources
 
 from fdi_pln_2612_p4.corpus_loader import cargar_corpus_html
 from fdi_pln_2612_p4.embeddings import (
@@ -22,8 +22,8 @@ from fdi_pln_2612_p4.ui_terminal import (
     ui_print,
 )
 
-RUTA_BASE = Path(__file__).resolve().parents[2]
-RUTA_HTML = RUTA_BASE / "2000-h.htm"
+PAQUETE_DATOS = "fdi_pln_2612_p4.data"
+NOMBRE_HTML = "2000-h.htm"
 
 
 def ejecutar_busqueda(
@@ -83,9 +83,13 @@ def ejecutar_busqueda(
 
 
 def cargar_corpus() -> CorpusQuijote:
-    if not RUTA_HTML.exists():
-        raise FileNotFoundError(f"No encuentro el archivo {RUTA_HTML.name}.")
-    corpus = precalcular_tfidf(cargar_corpus_html(RUTA_HTML))
+    recurso_html = resources.files(PAQUETE_DATOS).joinpath(NOMBRE_HTML)
+    if not recurso_html.is_file():
+        raise FileNotFoundError(f"No encuentro el archivo {NOMBRE_HTML}.")
+
+    with resources.as_file(recurso_html) as ruta_html:
+        corpus = precalcular_tfidf(cargar_corpus_html(ruta_html))
+
     return precalcular_embeddings(corpus)
 
 
