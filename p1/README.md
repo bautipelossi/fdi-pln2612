@@ -95,10 +95,46 @@ ollama pull qwen2.5:3b
 
 ### Ejecución
 
+Linux/macOS (bash/zsh):
+
 ```bash
 export FDI_PLN__BUTLER_ADDRESS="http://IP_DEL_BUTLER:PUERTO"
 uv run fdi-pln-2612-p1
 ```
+
+Windows PowerShell:
+
+```powershell
+$env:FDI_PLN__BUTLER_ADDRESS = "http://IP_DEL_BUTLER:PUERTO"
+uv run fdi-pln-2612-p1
+```
+
+Windows CMD:
+
+```bat
+set FDI_PLN__BUTLER_ADDRESS=http://IP_DEL_BUTLER:PUERTO
+uv run fdi-pln-2612-p1
+```
+
+Nota: el ejecutable se lanza directamente. No usar subcomando `run`.
+
+### Verificación previa a entrega
+
+En la carpeta de la práctica (`p1`), comprobar:
+
+```bash
+uv format --check
+uv build
+uv run fdi-pln-2612-p1 --help
+```
+
+La ayuda debe mostrar:
+
+```text
+Usage: fdi-pln-2612-p1 [OPTIONS]
+```
+
+y no debe listar comandos/subcomandos.
 
 ### Prueba local (monopuesto)
 

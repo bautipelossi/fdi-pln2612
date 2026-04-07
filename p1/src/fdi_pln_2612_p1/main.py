@@ -264,14 +264,8 @@ def ciclo_autonomo() -> None:
 import click
 
 
-@click.group(context_settings={"help_option_names": ["-h", "--help"]})
+@click.command(context_settings={"help_option_names": ["-h", "--help"]})
 def cli():
-    """Agente autónomo de trueque para Butler."""
-    pass
-
-
-@cli.command()
-def run():
     """Ejecuta el agente (requiere FDI_PLN__BUTLER_ADDRESS)."""
     ciclo_autonomo()
 
