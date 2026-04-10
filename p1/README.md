@@ -102,6 +102,40 @@ export FDI_PLN__BUTLER_ADDRESS="http://IP_DEL_BUTLER:PUERTO"
 uv run fdi-pln-2612-p1
 ```
 
+Windows PowerShell:
+
+```powershell
+$env:FDI_PLN__BUTLER_ADDRESS = "http://IP_DEL_BUTLER:PUERTO"
+uv run fdi-pln-2612-p1
+```
+
+Windows CMD:
+
+```bat
+set FDI_PLN__BUTLER_ADDRESS=http://IP_DEL_BUTLER:PUERTO
+uv run fdi-pln-2612-p1
+```
+
+Nota: el ejecutable se lanza directamente. No usar subcomando `run`.
+
+### Verificación previa a entrega
+
+Desde la carpeta `p1`, comprobar:
+
+```bash
+uv format --check
+uv build
+uv run fdi-pln-2612-p1 --help
+```
+
+La ayuda debe mostrar:
+
+```text
+Usage: fdi-pln-2612-p1 [OPTIONS]
+```
+
+y no debe listar subcomandos.
+
 ### Prueba local (monopuesto)
 
 Lanzar el servidor Butler en una terminal:
