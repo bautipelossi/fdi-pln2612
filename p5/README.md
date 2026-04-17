@@ -63,7 +63,7 @@ resources/
 Ver opciones disponibles:
 
 ```bash
-python3 main.py --help
+uv run python main.py --help
 ```
 
 Entrenar y generar:
@@ -109,7 +109,8 @@ generated = model.generate(context, max_new_tokens=120, temperature=0.9, top_k=4
 
 ## Notas
 
-La ejecucion completa requiere `torch`, un corpus en `resources/` y la clase
-`TinyLLM` en `model.py`. Mientras `model.py` no exista, `main.py --help`
-funciona, pero el entrenamiento mostrara un error indicando que falta esa
-pieza.
+La ejecucion recomendada es siempre mediante `uv run`, para usar el entorno y
+las dependencias declaradas en `pyproject.toml`. La ejecucion completa requiere
+`torch`, un corpus en `resources/` y la clase `TinyLLM` en `model.py`. Mientras
+`model.py` no exista, `uv run python main.py --help` funciona, pero el
+entrenamiento mostrara un error indicando que falta esa pieza.
