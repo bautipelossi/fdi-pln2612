@@ -17,6 +17,8 @@ class Attention(nn.Module):
 
     def __init__(self, d_model, n_heads, max_seq_len, dropout):
         super().__init__()
+        if d_model % n_heads != 0:
+            raise ValueError("d_model debe ser divisible entre n_heads.")
         self.n_heads = n_heads
         # Distribuimos la dimensión del modelo entre el numero de cabezas
         self.head_dim = d_model // n_heads
@@ -38,30 +40,31 @@ class Attention(nn.Module):
         # Los tensores de pytorch tienen primero una dimensión batch
         # (entrenamiento más eficiente si hacemos varios a la vez)
         # luego tokens y luego ya la dimensión de los embeddings
-        batch_size, n_tokens, d_model = x.shape
+        _batch_size, n_tokens, _d_model = x.shape
+        if n_tokens > self.mask.size(0):
+            raise ValueError("La secuencia supera max_seq_len.")
 
         # multiplicamos x por QKV (todo junto), pero separamos a lo largo de la
         # última dimensión para tener las matrices de queries, keys y values
 
-        q, k, v = self.qkv(x).tensor_split(3, dim=-1) 
-
+        q, k, v = self.qkv(x).tensor_split(3, dim=-1)
 
         # separamos en cabezales (ver función más abajo)
         q = self.split_heads(q)
         k = self.split_heads(k)
         v = self.split_heads(v)
 
-        #calculo de A (atención)
-        a = q @ k.transpose()
+        # calculo de A (atención)
+        a = q @ k.transpose(-2, -1)
         if causal:
             a = a + self.mask[:n_tokens, :n_tokens]
 
-        #Normalización
+        # Normalización
         a = a / math.sqrt(self.head_dim)
-        a = softmax(a,dim=-1)
+        a = softmax(a, dim=-1)
         a = self.dropout(a)
-        
-        #calculo de z
+
+        # calculo de z
         z = a @ v
 
         # "deshacemos" la partición en cabezales
@@ -80,4 +83,3 @@ class Attention(nn.Module):
         # "multiplique por separado", haciéndolos independientes
 
         return x.transpose(1, 2)
-
