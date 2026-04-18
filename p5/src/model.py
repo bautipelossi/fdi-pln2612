@@ -1,20 +1,37 @@
 import torch
+import torch.nn as nn
 
-from data import get_batch, load_corpus
-from tokenizer import BPETokenizer
+from src.data import get_batch, load_corpus
+from src.tokenizer import BPETokenizer
 
 
-def _load_model_class():
-    try:
-        from model import TinyLLM
-    except ModuleNotFoundError as exc:
-        if exc.name == "model":
-            raise ModuleNotFoundError(
-                "Falta model.py con la clase TinyLLM. "
-                "Ese es el sitio natural para integrar el Transformer del profesor."
-            ) from exc
-        raise
-    return TinyLLM
+class TinyLLM(nn.Module):
+    """Placeholder de TinyLLM para integrar el Transformer completo."""
+
+    def __init__(self, vocab_size, d_model, n_heads, n_layers, max_seq_len, dropout):
+        super().__init__()
+        raise NotImplementedError(
+            "TinyLLM aun no esta implementado. Integra aqui el Transformer de la catedra."
+        )
+
+    def forward(self, x, y=None):
+        raise NotImplementedError
+
+    def generate(self, context, max_new_tokens, temperature=1.0, top_k=None):
+        raise NotImplementedError
+
+
+@torch.no_grad()
+def evaluate_loss(model, data, batch_size, block_size, device, eval_steps=20):
+    """Estimacion rapida de loss promedio para validacion."""
+    model.eval()
+    losses = []
+    for _ in range(eval_steps):
+        xb, yb = get_batch(data, batch_size, block_size, device)
+        _, loss = model(xb, yb)
+        losses.append(loss.item())
+    model.train()
+    return sum(losses) / len(losses)
 
 
 def train(args):
@@ -29,8 +46,10 @@ def train(args):
 
     split = int(0.9 * len(ids))
     train_data = ids[:split]
+    val_data = ids[split:]
+    if len(val_data) <= args.max_seq_len + 1:
+        val_data = train_data
 
-    TinyLLM = _load_model_class()
     model = TinyLLM(
         vocab_size=len(tokenizer.vocab),
         d_model=args.d_model,
@@ -52,7 +71,17 @@ def train(args):
         optimizer.step()
 
         if step % args.log_every == 0 or step == 1:
-            print(f"step={step:5d} | loss={loss.item():.4f}")
+            val_loss = evaluate_loss(
+                model,
+                val_data,
+                args.batch_size,
+                args.max_seq_len,
+                device,
+                eval_steps=args.eval_steps,
+            )
+            print(
+                f"step={step:5d} | train_loss={loss.item():.4f} | val_loss={val_loss:.4f}"
+            )
 
     model.eval()
     prompt_ids = tokenizer.encode(args.prompt) if args.prompt else [0]

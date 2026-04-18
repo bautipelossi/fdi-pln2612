@@ -1,48 +1,45 @@
-# P5 - Tiny LLM
+# P5 - LLM basado en Transformer
 
-Practica para construir un modelo de lenguaje pequeno desde varias piezas
-basicas: tokenizacion BPE, auto-atencion multi-cabezal, entrenamiento
+Practica para implementar un LLM basado en Transformer: tokenizacion BPE, auto-atencion multi-cabezal, entrenamiento
 autoregresivo y generacion de texto.
 
 ## Estado actual
 
-El repositorio esta preparado para integrar la implementacion del Transformer
-cuando este disponible. Ahora mismo ya incluye:
+El proyecto esta modularizado en `src/` y con carpeta `corpus/` para los datos.
+Actualmente incluye:
 
-- `tokenizer.py`: tokenizador BPE entrenado sobre el corpus.
-- `attention.py`: capa de auto-atencion multi-cabezal con mascara causal.
-- `data.py`: carga del corpus y creacion de batches.
-- `train.py`: bucle de entrenamiento y generacion final.
-- `main.py`: punto de entrada por linea de comandos.
+- `src/tokenizer.py`: tokenizador BPE entrenado sobre el corpus.
+- `src/attention.py`: capa de auto-atencion multi-cabezal con mascara causal.
+- `src/data.py`: carga del corpus y creacion de batches.
+- `src/model.py`: sitio de integracion de `TinyLLM`, entrenamiento y evaluacion.
 
-Falta todavia:
-
-- `model.py`: debe definir `TinyLLM`.
-- `resources/`: carpeta con archivos `.txt` para entrenar.
+Falta todavia integrar la implementacion concreta de `TinyLLM` dentro de
+`src/model.py`.
 
 ## Estructura
 
 ```text
 p5/
-├── attention.py
-├── data.py
-├── main.py
-├── tokenizer.py
-├── train.py
+├── corpus/
+│   └── *.txt
+├── src/
+│   ├── __init__.py
+│   ├── attention.py
+│   ├── data.py
+│   ├── model.py
+│   └── tokenizer.py
 ├── pyproject.toml
-├── README.md
-└── resources/
-    └── corpus.txt
+└── README.md
 ```
 
 ## Flujo del programa
 
-1. `main.py` lee los argumentos de ejecucion.
-2. `train.py` carga el corpus usando `data.load_corpus`.
-3. `BPETokenizer` aprende un vocabulario a partir del texto.
-4. El corpus se convierte en IDs de tokens.
-5. `data.get_batch` crea pares `x` e `y`, donde `y` es `x` desplazado un token.
-6. `TinyLLM` aprende a predecir el siguiente token.
+1. `src/data.py` carga el corpus (`.txt`) de la carpeta `corpus/`.
+2. `BPETokenizer` aprende un vocabulario a partir del texto.
+3. El corpus se convierte en IDs de tokens.
+4. `get_batch` crea pares `x` e `y`, donde `y` es `x` desplazado un token.
+5. `TinyLLM` (en `src/model.py`) aprende a predecir el siguiente token.
+6. Se estima `val_loss` periodicamente con `evaluate_loss`.
 7. Al terminar, el modelo genera texto desde un prompt.
 
 ## Uso
@@ -53,30 +50,26 @@ Instalar dependencias:
 uv sync
 ```
 
-Crear una carpeta `resources/` con uno o varios `.txt`:
+Crear/usar la carpeta `corpus/` con uno o varios `.txt`:
 
 ```text
-resources/
+corpus/
 └── corpus.txt
 ```
 
-Ver opciones disponibles:
+Ejemplo de ejecucion desde Python:
 
 ```bash
-uv run python main.py --help
+uv run python -c "from types import SimpleNamespace; from src.model import train; train(SimpleNamespace(data_dir='corpus', vocab_size=300, d_model=128, n_heads=4, n_layers=2, max_seq_len=64, dropout=0.1, lr=3e-4, batch_size=16, steps=200, log_every=20, eval_steps=20, prompt='hola', max_new_tokens=80, temperature=0.9, top_k=40))"
 ```
 
-Entrenar y generar:
+Nota: este comando levanta el flujo de entrenamiento definido en `src/model.py`.
 
-```bash
-uv run python main.py --data-dir resources --steps 200
-```
-
-## Integracion de `model.py`
+## Integracion de TinyLLM
 
 Cuando este disponible el codigo del Transformer, el sitio natural para
-integrarlo es `model.py`. Ese archivo deberia exponer una clase `TinyLLM` con
-esta interfaz aproximada:
+integrarlo es `src/model.py`. Ese archivo debe exponer una clase `TinyLLM` con
+esta interfaz:
 
 ```python
 model = TinyLLM(
@@ -92,7 +85,13 @@ logits, loss = model(x, y)
 generated = model.generate(context, max_new_tokens=120, temperature=0.9, top_k=40)
 ```
 
-`attention.py` queda como modulo reutilizable para los bloques Transformer.
+`src/attention.py` queda como modulo reutilizable para los bloques Transformer.
+
+## Estado para push
+
+- Estructura del repo consistente con `src/` y `corpus/`.
+- Carga de datos, tokenizacion y bucle de entrenamiento/evaluacion listos.
+- Pendiente: implementar `TinyLLM` para poder entrenar y generar texto de extremo a extremo.
 
 ## Argumentos principales
 
@@ -106,11 +105,11 @@ generated = model.generate(context, max_new_tokens=120, temperature=0.9, top_k=4
 - `--steps`: pasos de entrenamiento.
 - `--prompt`: texto inicial para generar.
 - `--max-new-tokens`: tokens nuevos a generar.
+- `--eval-steps`: batches para estimar validacion.
 
 ## Notas
 
 La ejecucion recomendada es siempre mediante `uv run`, para usar el entorno y
 las dependencias declaradas en `pyproject.toml`. La ejecucion completa requiere
-`torch`, un corpus en `resources/` y la clase `TinyLLM` en `model.py`. Mientras
-`model.py` no exista, `uv run python main.py --help` funciona, pero el
-entrenamiento mostrara un error indicando que falta esa pieza.
+`torch`, un corpus en `corpus/` y la clase `TinyLLM` implementada en
+`src/model.py`.
