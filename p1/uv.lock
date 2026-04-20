@@ -129,7 +129,7 @@ wheels = [
 
 [[package]]
 name = "fdi-pln-2612-p1"
-version = "1.0"
+version = "2.0"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
