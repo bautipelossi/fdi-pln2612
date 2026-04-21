@@ -52,7 +52,7 @@ class CausalLLM(Transformer):
         return logits, loss
 
     @torch.no_grad()
-    def generate(self, prompt, max_tokens=200, temperature=0.8):
+    def generate(self, prompt, max_tokens=200, temperature=0.8, top_k=None):
         """Genera tokens a partir de un prompt (lista de ids).
 
         Usa sampling probabilístico para aumentar la "creatividad".
@@ -61,13 +61,18 @@ class CausalLLM(Transformer):
         max_tokens   Número máximo de tokens a generar.
         temperature  Modula lo "puntiaguda" (determinista) que es la
                      distribución de sampling.
+        top_k        Si se indica, restringe el sampling a los k tokens más
+                     probables.
 
         Devuelve la lista de token ids generados (sin el prompt).
 
-        TAREA: ¿Cómo implementarías top-k?
         TAREA: ¿Cómo implementarías restringir la generación a una estructura,
         por ejemplo una gramática de json?
         """
+        if temperature <= 0:
+            raise ValueError("temperature debe ser mayor que 0.")
+        if top_k is not None and top_k <= 0:
+            raise ValueError("top_k debe ser positivo.")
 
         # Ponemos el modelo en modo eval
         self.eval()
@@ -86,10 +91,16 @@ class CausalLLM(Transformer):
             # Calculamos los logits del posible próximo token
             logits, _ = self(ventana)
             next_token_logits = logits[:, -1, :]
+            next_token_logits = next_token_logits / temperature
+            if top_k is not None:
+                k = min(top_k, next_token_logits.size(-1))
+                top_values, top_indices = torch.topk(next_token_logits, k)
+                filtered_logits = torch.full_like(next_token_logits, float("-inf"))
+                next_token_logits = filtered_logits.scatter(-1, top_indices, top_values)
             # Convertimos en una distribución de probabilidad sobre el vocab.
             # Al dividir por la temperatura en el exponente de la exponencial,
             # modulamos lo "puntiaguda" (determinista) que es la distribución
-            next_token_probs = softmax(next_token_logits / temperature, dim=-1)
+            next_token_probs = softmax(next_token_logits, dim=-1)
             # sampleamos un único token
             next_token_id = torch.multinomial(next_token_probs, 1)
 

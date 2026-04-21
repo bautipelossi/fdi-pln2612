@@ -38,7 +38,8 @@ p5/
 2. Se entrena `BPETokenizer` y se tokeniza el texto.
 3. Se instancia `CausalLLM`.
 4. Se entrena con `train(...)` en `src/causal_train.py`.
-5. Se genera texto con `model.generate(...)`.
+5. Se genera texto con `model.generate(...)`, opcionalmente restringiendo el
+   muestreo con `top_k`.
 
 ## Instalacion
 
@@ -60,6 +61,30 @@ Si se quiere usar otra carpeta de textos, se puede pasar como argumento:
 uv run python -m src.causal_train otra_carpeta
 ```
 
+Prueba pequena recomendada para comprobar que todo funciona sin exigir mucha
+CPU/RAM:
+
+```bash
+uv run python -m src.causal_train corpus \
+  --max-chars 5000 \
+  --max-tokens 512 \
+  --vocab-size 80 \
+  --context-size 32 \
+  --d-model 32 \
+  --n-heads 4 \
+  --n-layers 1 \
+  --expansion 2 \
+  --dropout 0.0 \
+  --epochs 1 \
+  --batch-size 8 \
+  --max-new-tokens 30 \
+  --top-k 10
+```
+
+Los hiperparametros principales se pueden ajustar desde la CLI con opciones
+como `--epochs`, `--batch-size`, `--d-model`, `--n-layers`, `--context-size`,
+`--vocab-size`, `--max-chars` y `--max-tokens`.
+
 ## Uso como modulos
 
 ```python
@@ -74,3 +99,4 @@ from src.tokenizer import BPETokenizer
 - Estructura migrada al esquema de clase (`transformer` + `causal_llm` + `causal_train`).
 - Se mantiene `src/__init__.py` con exports para importar componentes comunes.
 - El Transformer basico ya completa los huecos principales de la plantilla.
+- `generate` soporta `top_k` para limitar el muestreo a los tokens mas probables.

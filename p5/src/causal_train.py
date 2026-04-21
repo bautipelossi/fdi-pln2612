@@ -1,3 +1,4 @@
+import argparse
 import time
 
 import torch
@@ -28,10 +29,17 @@ class TextDataset(Dataset):
 def _make_dataloaders(tokens, context_size, batch_size, train_ratio=0.9):
     """Los dataloaders se encargan de ir aportando pares para el entrenamiento,
     incluyendo batching, mezcla aleatoria, etc."""
+    if not 0 < train_ratio < 1:
+        raise ValueError("train_ratio debe estar entre 0 y 1.")
+
     data = torch.tensor(tokens, dtype=torch.long)
 
     # Separamos datos en entrenamiento y validación
     split = int(train_ratio * len(data))
+    if split <= context_size or len(data) - split <= context_size:
+        raise ValueError(
+            "No hay tokens suficientes para crear train/val con el context_size actual."
+        )
     train_ds = TextDataset(data[:split], context_size)
     val_ds = TextDataset(data[split:], context_size)
     logger.info(f"Train: {len(train_ds):,} muestras, Val: {len(val_ds):,}")
@@ -54,33 +62,33 @@ def _run_epoch(model, dataloader, optimizer=None):
     total_loss, n = 0, 0
     device = next(model.parameters()).device
 
-    if optimizer:
+    training = optimizer is not None
+    if training:
         model.train()
-        torch.set_grad_enabled(True)
     else:
         model.eval()
-        torch.set_grad_enabled(False)
 
-    for x, y in dataloader:
-        x, y = x.to(device), y.to(device)
+    with torch.set_grad_enabled(training):
+        for x, y in dataloader:
+            x, y = x.to(device), y.to(device)
 
-        if optimizer:
-            optimizer.zero_grad()
+            if training:
+                optimizer.zero_grad()
 
-        # Pase forward, creando el grafo computacional y calculando loss
-        _, loss = model(x, y)
+            # Pase forward, creando el grafo computacional y calculando loss
+            _, loss = model(x, y)
 
-        if optimizer:
-            # Propaga la pérdida hacia atrás siguiendo el grafo
-            loss.backward()
-            # Reducimos "gradientes explosivos" para evitar anomalías de train
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            # Hacemos un paso del optimizador (eg un pequeño paso de descenso
-            # siguiendo el gradiente, o lo que determine el optimizador)
-            optimizer.step()
+            if training:
+                # Propaga la pérdida hacia atrás siguiendo el grafo
+                loss.backward()
+                # Reducimos "gradientes explosivos" para evitar anomalías de train
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+                # Hacemos un paso del optimizador (eg un pequeño paso de descenso
+                # siguiendo el gradiente, o lo que determine el optimizador)
+                optimizer.step()
 
-        total_loss += loss.item()
-        n += 1
+            total_loss += loss.item()
+            n += 1
 
     # Devolvemos la media de loss en este epoch
     return total_loss / n
@@ -121,36 +129,115 @@ def train(
     logger.info(f"Entrenamiento finalizado en {elapsed:.1f}s")
 
 
-if __name__ == "__main__":
-    import sys
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description="Entrena un LLM causal pequeno.")
+    parser.add_argument(
+        "corpus_dir",
+        nargs="?",
+        default="corpus",
+        help="Carpeta con archivos .txt para entrenar.",
+    )
+    parser.add_argument("--vocab-size", type=int, default=300)
+    parser.add_argument("--context-size", type=int, default=128)
+    parser.add_argument("--d-model", type=int, default=128)
+    parser.add_argument("--n-heads", type=int, default=4)
+    parser.add_argument("--n-layers", type=int, default=4)
+    parser.add_argument("--expansion", type=int, default=4)
+    parser.add_argument("--dropout", type=float, default=0.1)
+    parser.add_argument("--epochs", type=int, default=5)
+    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--lr", type=float, default=3e-4)
+    parser.add_argument("--train-ratio", type=float, default=0.9)
+    parser.add_argument(
+        "--max-chars",
+        type=int,
+        default=None,
+        help="Limita caracteres del corpus antes de tokenizar.",
+    )
+    parser.add_argument(
+        "--max-tokens",
+        type=int,
+        default=None,
+        help="Limita tokens despues de tokenizar.",
+    )
+    parser.add_argument(
+        "--prompt",
+        default="alice and the cat were studying for the exam. what ",
+    )
+    parser.add_argument("--max-new-tokens", type=int, default=200)
+    parser.add_argument("--temperature", type=float, default=0.8)
+    parser.add_argument("--top-k", type=int, default=None)
+    parser.add_argument("--seed", type=int, default=0)
+    return parser.parse_args(argv)
 
+
+def main(argv=None):
     from src.causal_llm import CausalLLM
     from src.corpus import load_corpus
     from src.tokenizer import BPETokenizer
 
-    corpus = sys.argv[1] if len(sys.argv) > 1 else "corpus"
-    text = load_corpus(corpus)
+    args = parse_args(argv)
+    torch.manual_seed(args.seed)
+
+    text = load_corpus(args.corpus_dir)
+    if args.max_chars is not None:
+        text = text[: args.max_chars]
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    VOCAB_SIZE = 300
-    CONTEXT_SIZE = 128
-
-    tokenizer = BPETokenizer(text, vocab_size=VOCAB_SIZE)
+    tokenizer = BPETokenizer(text, vocab_size=args.vocab_size)
     tokens = tokenizer.encode(text)
+    if args.max_tokens is not None:
+        tokens = tokens[: args.max_tokens]
+
+    logger.info(
+        "Config | device={} | chars={} | tokens={} | vocab={} | d_model={} | "
+        "layers={} | heads={} | context={} | batch={} | epochs={}",
+        device,
+        len(text),
+        len(tokens),
+        len(tokenizer.vocab),
+        args.d_model,
+        args.n_layers,
+        args.n_heads,
+        args.context_size,
+        args.batch_size,
+        args.epochs,
+    )
 
     model = CausalLLM(
         vocab_size=len(tokenizer.vocab),
-        max_seq_len=CONTEXT_SIZE,
-        d_model=128,
-        n_heads=4,
-        n_layers=4,
-        expansion=4,
-        dropout=0.1,
+        max_seq_len=args.context_size,
+        d_model=args.d_model,
+        n_heads=args.n_heads,
+        n_layers=args.n_layers,
+        expansion=args.expansion,
+        dropout=args.dropout,
     ).to(device)
 
-    train(model, tokens, epochs=5, context_size=CONTEXT_SIZE)
+    logger.info(
+        "Parametros entrenables: {:,}", sum(p.numel() for p in model.parameters())
+    )
+    train(
+        model,
+        tokens,
+        epochs=args.epochs,
+        context_size=args.context_size,
+        batch_size=args.batch_size,
+        lr=args.lr,
+        train_ratio=args.train_ratio,
+    )
 
-    prompt = "alice and the cat were studying for the exam. what "
-    pred = model.generate(tokenizer.encode(prompt), max_tokens=200)
-    logger.opt(colors=True).info(f"<cyan>{prompt}</cyan>{tokenizer.decode(pred)[:500]}")
+    pred = model.generate(
+        tokenizer.encode(args.prompt),
+        max_tokens=args.max_new_tokens,
+        temperature=args.temperature,
+        top_k=args.top_k,
+    )
+    logger.opt(colors=True).info(
+        f"<cyan>{args.prompt}</cyan>{tokenizer.decode(pred)[:500]}"
+    )
+
+
+if __name__ == "__main__":
+    main()
