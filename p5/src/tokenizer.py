@@ -67,5 +67,5 @@ class BPETokenizer:
 
     def __repr__(self):
         pretty = [t.replace("\n", "\\n").replace(" ", "▁") for t in self.vocab]
-        return f"{len(self.vocab)} tokens: ['{"', '".join(pretty)}']"
-
+        joined = "', '".join(pretty)
+        return f"{len(self.vocab)} tokens: ['{joined}']"

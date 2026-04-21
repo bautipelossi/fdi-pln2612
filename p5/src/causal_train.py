@@ -128,7 +128,7 @@ if __name__ == "__main__":
     from src.corpus import load_corpus
     from src.tokenizer import BPETokenizer
 
-    corpus = sys.argv[1] if len(sys.argv) > 1 else "resources"
+    corpus = sys.argv[1] if len(sys.argv) > 1 else "corpus"
     text = load_corpus(corpus)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -140,7 +140,7 @@ if __name__ == "__main__":
     tokens = tokenizer.encode(text)
 
     model = CausalLLM(
-        vocab_size=tokenizer.vocab_size,
+        vocab_size=len(tokenizer.vocab),
         max_seq_len=CONTEXT_SIZE,
         d_model=128,
         n_heads=4,

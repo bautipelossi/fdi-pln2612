@@ -51,11 +51,14 @@ uv sync
 Ejecutar el script de entrenamiento con los defaults definidos en `main`:
 
 ```bash
-uv run python -m src.causal_train corpus
+uv run python -m src.causal_train
 ```
 
-Si no se pasa argumento, el script usa la carpeta `resources` por defecto,
-asi que para este repo se recomienda indicar `corpus` explicitamente.
+Si se quiere usar otra carpeta de textos, se puede pasar como argumento:
+
+```bash
+uv run python -m src.causal_train otra_carpeta
+```
 
 ## Uso como modulos
 
@@ -70,4 +73,4 @@ from src.tokenizer import BPETokenizer
 
 - Estructura migrada al esquema de clase (`transformer` + `causal_llm` + `causal_train`).
 - Se mantiene `src/__init__.py` con exports para importar componentes comunes.
-- El comportamiento final depende de completar los `TODO` pendientes en los modulos donde aplique.
+- El Transformer basico ya completa los huecos principales de la plantilla.

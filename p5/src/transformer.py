@@ -22,8 +22,7 @@ class FeedForward(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
-        # TODO
-        raise NotImplementedError
+        return self.dropout(self.down(self.act(self.up(x))))
 
 
 class Block(nn.Module):
@@ -44,8 +43,9 @@ class Block(nn.Module):
 
     def forward(self, x, causal=True):
         # Aplicamos las capas pero sumando (residuales, skip connections)
-        # TODO
-        raise NotImplementedError
+        x = x + self.attn(self.norm1(x), causal=causal)
+        x = x + self.ff(self.norm2(x))
+        return x
 
 
 class Transformer(nn.Module):
@@ -81,9 +81,12 @@ class Transformer(nn.Module):
 
         # El corazón del transformer es el bloque principal, con atención y
         # feedforward, que repetimos en secuencia varias veces
-        # TODO
-        # self.blocks = ...?
-        raise NotImplementedError
+        self.blocks = nn.ModuleList(
+            [
+                Block(max_seq_len, d_model, n_heads, expansion, dropout)
+                for _ in range(n_layers)
+            ]
+        )
 
         # Una última normalización final
         self.norm = nn.LayerNorm(d_model)
@@ -95,10 +98,15 @@ class Transformer(nn.Module):
         causal  Si True, la atención es causal (solo mira tokens anteriores)
         """
         _, n_tokens = idx.shape
+        if n_tokens > self.max_seq_len:
+            raise ValueError("La secuencia supera max_seq_len.")
 
         # Los tokens de vocabulario se entrenan, los posicionales se calculan
         # directamente (en GPU si estamos usando GPU)
         pos = self.pos_emb(torch.arange(n_tokens, device=idx.device))
 
-        # TODO
-        raise NotImplementedError
+        x = self.tok_emb(idx) + pos
+        x = self.drop(x)
+        for block in self.blocks:
+            x = block(x, causal=causal)
+        return self.norm(x)
