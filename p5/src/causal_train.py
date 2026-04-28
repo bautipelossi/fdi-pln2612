@@ -97,7 +97,7 @@ def _run_epoch(model, dataloader, optimizer=None):
 def train(
     model,
     tokens,
-    epochs=5,
+    epochs=4,
     context_size=128,
     batch_size=64,
     lr=3e-4,
@@ -140,11 +140,11 @@ def parse_args(argv=None):
     parser.add_argument("--vocab-size", type=int, default=300)
     parser.add_argument("--context-size", type=int, default=128)
     parser.add_argument("--d-model", type=int, default=128)
-    parser.add_argument("--n-heads", type=int, default=4)
+    parser.add_argument("--n-heads", type=int, default=2)
     parser.add_argument("--n-layers", type=int, default=4)
     parser.add_argument("--expansion", type=int, default=4)
     parser.add_argument("--dropout", type=float, default=0.1)
-    parser.add_argument("--epochs", type=int, default=5)
+    parser.add_argument("--epochs", type=int, default=4)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--lr", type=float, default=3e-4)
     parser.add_argument("--train-ratio", type=float, default=0.9)
