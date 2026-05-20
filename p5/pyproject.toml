@@ -1,14 +1,18 @@
 [project]
-name = "p5-tiny-llm"
-version = "0.1.0"
-description = "P5: Tiny LLM desde tokenizacion BPE hasta generacion"
+name = "fdi-pln-2612-p5"
+version = "1.0"
+description = "P5: LLM causal, generacion y NER"
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
 dependencies = [
     "loguru>=0.7",
     "numpy>=1.26",
+    "typer>=0.12",
     "torch",
 ]
+
+[project.scripts]
+fdi-pln-2612-p5 = "src.cli:app"
 
 [build-system]
 requires = ["hatchling"]

@@ -4,6 +4,11 @@ Practica de PLN para implementar un modelo autoregresivo completo:
 tokenizacion BPE, autoatencion multi-cabezal, backbone Transformer,
 cabeza causal y entrenamiento sobre corpus de texto.
 
+## Integrantes
+
+- Bautista Pelossi Schweizer
+- Ignacio Ramirez Suarez
+
 ## Estructura
 
 ```text
@@ -11,6 +16,8 @@ p5/
 ├── corpus/
 │   ├── alice_in_wonderland.txt
 │   └── looking_glass.txt
+├── data_ner/
+│   └── corpus_tag.json
 ├── src/
 │   ├── __init__.py
 │   ├── attention.py
@@ -47,25 +54,61 @@ p5/
 uv sync
 ```
 
+## Dataset NER
+
+El dataset etiquetado debe estar en `data_ner/corpus_tag.json` con el formato
+`tokens`/`labels`. Las etiquetas esperadas son:
+
+- `pi`: persona inicio
+- `pc`: persona continuacion
+- `li`: lugar inicio
+- `lc`: lugar continuacion
+- `o`: otro
+
 ## Ejecucion
 
-Ejecutar el script de entrenamiento con los defaults definidos en `main`:
+Ejecutar el entrenamiento del LLM (guarda `p5_causal_2612.pth`):
 
 ```bash
-uv run python -m src.causal_train
+uv run fdi-pln-2612-p5 train-llm --corpus corpus
 ```
 
-Si se quiere usar otra carpeta de textos, se puede pasar como argumento:
+Generar texto desde un prompt:
 
 ```bash
-uv run python -m src.causal_train otra_carpeta
+uv run fdi-pln-2612-p5 generate \
+  --weights p5_causal_2612.pth \
+  --prompt "alice and the cat were studying for the exam. "
+```
+
+Entrenar NER con datos etiquetados:
+
+```bash
+uv run fdi-pln-2612-p5 train-ner \
+  --data data_ner/corpus_tag.json \
+  --llm-weights p5_causal_2612.pth \
+  --out p5_ner_2612.pth
+```
+
+Predecir entidades desde un archivo de texto:
+
+```bash
+uv run fdi-pln-2612-p5 predict-ner \
+  --weights p5_ner_2612.pth \
+  --input ruta/al/texto.txt
+```
+
+Verificar formato:
+
+```bash
+uv format --check
 ```
 
 Prueba pequena recomendada para comprobar que todo funciona sin exigir mucha
 CPU/RAM:
 
 ```bash
-uv run python -m src.causal_train corpus \
+uv run fdi-pln-2612-p5 train-llm --corpus corpus \
   --max-chars 5000 \
   --max-tokens 512 \
   --vocab-size 80 \

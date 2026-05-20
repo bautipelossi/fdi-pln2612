@@ -1,4 +1,5 @@
 from collections import Counter
+from typing import Any
 
 class BPETokenizer:
     """Byte Pair Encoding entrenado sobre un texto.
@@ -9,14 +10,14 @@ class BPETokenizer:
     """
 
     def __init__(self, text, vocab_size=300):
-
         self.vocab_size = vocab_size
         # Inicializamos con caracteres encontrados en el texto
-        self.vocab = sorted(set(text))  #generar un diccionario donde las claves son los chars y el primer elemento el ìndice y se le asigna a cada caracter un id
+        self.vocab = sorted(set(text))
         self.tok2id = {tok: i for i, tok in enumerate(self.vocab)}
 
-        tokens = [self.tok2id[c] for c in text] #tokenizo el texto
-        self.merges = []  # lista de ((id_a, id_b), nuevo_id), para encode(), mergea los mas frecuentes
+        tokens = [self.tok2id[c] for c in text]
+        # lista de ((id_a, id_b), nuevo_id), para encode(); mergea los mas frecuentes
+        self.merges = []
 
         for new_id in range(len(self.vocab), vocab_size):
             pairs = Counter(zip(tokens, tokens[1:]))
@@ -63,7 +64,24 @@ class BPETokenizer:
                 raise ValueError(f"id fuera de vocabulario: {i}")
             out.append(self.vocab[i])
         return "".join(out)
-       
+
+    def to_state(self) -> dict[str, Any]:
+        """Serializa el tokenizador para guardarlo junto a pesos."""
+        return {
+            "vocab_size": self.vocab_size,
+            "vocab": self.vocab,
+            "merges": self.merges,
+        }
+
+    @classmethod
+    def from_state(cls, state: dict[str, Any]) -> "BPETokenizer":
+        """Reconstruye un tokenizador sin re-entrenar desde texto."""
+        obj = cls.__new__(cls)
+        obj.vocab_size = state["vocab_size"]
+        obj.vocab = list(state["vocab"])
+        obj.tok2id = {tok: i for i, tok in enumerate(obj.vocab)}
+        obj.merges = [tuple(m) for m in state["merges"]]
+        return obj
 
     def __repr__(self):
         pretty = [t.replace("\n", "\\n").replace(" ", "▁") for t in self.vocab]
