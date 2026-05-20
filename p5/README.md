@@ -23,7 +23,13 @@ p5/
 │   ├── tokenizer.py
 │   ├── transformer.py
 │   ├── causal_llm.py
-│   └── causal_train.py
+│   ├── causal_train.py
+│   ├── ner.py
+│   └── cli.py
+├── tests/
+│   ├── test_attention.py
+│   ├── test_causal_llm.py
+│   └── test_tokenizer.py
 ├── pyproject.toml
 └── README.md
 ```
@@ -36,6 +42,8 @@ p5/
 - `src/transformer.py`: bloques Transformer (embeddings, blocks, normalizacion).
 - `src/causal_llm.py`: modelo causal con cabeza de lenguaje y generate.
 - `src/causal_train.py`: entrenamiento por epocas y validacion.
+- `src/ner.py`: modelo NER, alineamiento de etiquetas y entrenamiento.
+- `src/cli.py`: interfaz de comandos de la practica.
 
 ## Flujo de trabajo
 
@@ -68,7 +76,7 @@ El dataset etiquetado debe estar en `data_ner/corpus_tag.json` con el formato
 Ejecutar el entrenamiento del LLM (guarda `p5_causal_2612.pth`):
 
 ```bash
-uv run fdi-pln-2612-p5 train-llm --corpus corpus
+uv run fdi-pln-2612-p5 train-llm corpus
 ```
 
 Generar texto desde un prompt:
@@ -106,7 +114,7 @@ Prueba pequena recomendada para comprobar que todo funciona sin exigir mucha
 CPU/RAM:
 
 ```bash
-uv run fdi-pln-2612-p5 train-llm --corpus corpus \
+uv run fdi-pln-2612-p5 train-llm corpus \
   --max-chars 5000 \
   --max-tokens 512 \
   --vocab-size 80 \
@@ -118,6 +126,15 @@ uv run fdi-pln-2612-p5 train-llm --corpus corpus \
   --dropout 0.0 \
   --epochs 1 \
   --batch-size 8 \
+  --out p5_causal_2612_small.pth
+```
+
+Generar una muestra con esos pesos pequenos:
+
+```bash
+uv run fdi-pln-2612-p5 generate \
+  --weights p5_causal_2612_small.pth \
+  --prompt "alice was beginning to " \
   --max-new-tokens 30 \
   --top-k 10
 ```

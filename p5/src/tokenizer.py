@@ -1,6 +1,7 @@
 from collections import Counter
 from typing import Any
 
+
 class BPETokenizer:
     """Byte Pair Encoding entrenado sobre un texto.
 
@@ -46,7 +47,7 @@ class BPETokenizer:
             else:
                 out.append(tokens[i])
                 i += 1
-        
+
         return out
 
     def encode(self, text):
