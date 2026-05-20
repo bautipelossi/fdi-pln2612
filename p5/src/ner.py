@@ -4,7 +4,7 @@ El flujo de datos:
 
     palabras anotadas (word-level, pi/pc/li/lc/o)
         |
-        |  align_to_bpe()       <- asigna B-/I- a cada sub-token
+        |  align_to_bpe()       <- tokeniza el texto
         v
     sub-tokens + etiquetas pi/pc/li/lc/o
         |
