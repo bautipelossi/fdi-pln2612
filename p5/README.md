@@ -1,13 +1,11 @@
 # P5 - LLM Causal con Transformer
+**Grupo 12**  
+**Bautista Pelossi Schweizer · Ignacio Ramirez Suarez**  
 
 Practica de PLN para implementar un modelo autoregresivo completo:
 tokenizacion BPE, autoatencion multi-cabezal, backbone Transformer,
 cabeza causal y entrenamiento sobre corpus de texto.
 
-## Integrantes
-
-- Bautista Pelossi Schweizer
-- Ignacio Ramirez Suarez
 
 ## Estructura
 
