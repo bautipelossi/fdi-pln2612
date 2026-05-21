@@ -366,6 +366,7 @@ def train_ner(
     train_ratio=0.9,
     class_weight_power=0.5,
     class_weight_max=5.0,
+    li_boost=1.0,
 ):
     train_ds, val_ds = _split_dataset(dataset, train_ratio)
     train_dl = DataLoader(
@@ -385,6 +386,14 @@ def train_ner(
     else:
         class_weights = torch.pow(base_weights, class_weight_power)
         class_weights = class_weights.clamp_max(class_weight_max)
+
+    if li_boost != 1.0:
+        if class_weights is None:
+            class_weights = torch.ones(NUM_LABELS)
+        class_weights[LABEL2ID["li"]] *= li_boost
+        class_weights[LABEL2ID["lc"]] *= li_boost
+
+    if class_weights is not None:
         class_weights = class_weights.to(next(model.parameters()).device)
 
     t0 = time.time()

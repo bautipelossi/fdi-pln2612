@@ -18,7 +18,14 @@ from src.ner import (
 )
 from src.tokenizer import BPETokenizer
 
-app = typer.Typer(help="CLI para P5: LLM causal y NER.")
+app = typer.Typer(help="CLI para P5: LLM causal y NER.", invoke_without_command=True)
+
+
+@app.callback(invoke_without_command=True)
+def main(ctx: typer.Context):
+    if ctx.invoked_subcommand is None:
+        typer.echo(ctx.get_help())
+        raise typer.Exit(code=0)
 
 
 def _save_bundle(path, model, tokenizer, config, extra=None):
@@ -179,6 +186,7 @@ def train_ner_command(
     seed: int = typer.Option(0, "--seed"),
     class_weight_power: float = typer.Option(0.5, "--class-weight-power"),
     class_weight_max: float = typer.Option(5.0, "--class-weight-max"),
+    li_boost: float = typer.Option(1.0, "--li-boost"),
 ):
     """Entrena el cabezal NER a partir de datos etiquetados."""
     torch.manual_seed(seed)
@@ -211,6 +219,7 @@ def train_ner_command(
         train_ratio=train_ratio,
         class_weight_power=class_weight_power,
         class_weight_max=class_weight_max,
+        li_boost=li_boost,
     )
 
     _save_bundle(out, model, tokenizer, config, extra={"label2id": LABEL2ID})
