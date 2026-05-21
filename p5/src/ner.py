@@ -176,7 +176,7 @@ class NERLLM(Transformer):
         # no tenemos más que proyectarla al espacio de etiquetas
         self.ner_head = nn.Linear(d_model, num_labels)
 
-    def forward(self, input_ids, labels=None):
+    def forward(self, input_ids, labels=None, class_weights=None):
         hidden = super().forward(input_ids, causal=False)
         logits = self.ner_head(hidden)
         loss = None
@@ -190,7 +190,12 @@ class NERLLM(Transformer):
             # Las posiciones de padding llevan -100 e ignore_index las descarta.
             flat_logits = logits.flatten(0, 1)
             flat_labels = labels.flatten()
-            loss = cross_entropy(flat_logits, flat_labels, ignore_index=-100)
+            loss = cross_entropy(
+                flat_logits,
+                flat_labels,
+                ignore_index=-100,
+                weight=class_weights,
+            )
         return logits, loss
 
     @torch.no_grad()
@@ -227,10 +232,12 @@ class NERLLM(Transformer):
         return entities
 
     @torch.no_grad()
-    def predict_entities_from_tokens(self, tokens, tokenizer):
+    def predict_entities_from_tokens(self, tokens, tokenizer, max_len=None):
         """Predice entidades sobre tokens pre-segmentados."""
         self.eval()
         ids, _ = align_tokens_to_bpe(tokens, ["o"] * len(tokens), tokenizer)
+        if max_len is not None:
+            ids = ids[:max_len]
         device = next(self.parameters()).device
         logits, _ = self(torch.tensor([ids], device=device))
         pred_labels = [ID2LABEL[p] for p in logits.argmax(-1)[0].tolist()]
@@ -329,7 +336,7 @@ def _split_dataset(dataset, train_ratio):
     return train_ds, val_ds
 
 
-def _run_epoch(model, dataloader, optimizer=None):
+def _run_epoch(model, dataloader, optimizer=None, class_weights=None):
     total_loss, n = 0.0, 0
     device = next(model.parameters()).device
     training = optimizer is not None
@@ -340,7 +347,7 @@ def _run_epoch(model, dataloader, optimizer=None):
             x, y = x.to(device), y.to(device)
             if training:
                 optimizer.zero_grad()
-            _, loss = model(x, y)
+            _, loss = model(x, y, class_weights=class_weights)
             if training:
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -357,6 +364,8 @@ def train_ner(
     batch_size=32,
     lr=3e-4,
     train_ratio=0.9,
+    class_weight_power=0.5,
+    class_weight_max=5.0,
 ):
     train_ds, val_ds = _split_dataset(dataset, train_ratio)
     train_dl = DataLoader(
@@ -365,10 +374,23 @@ def train_ner(
     val_dl = DataLoader(val_ds, batch_size=batch_size, collate_fn=collate_ner)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 
+    # Pesos por clase para mitigar desbalance (controlable por potencia y tope)
+    label_counts = torch.zeros(NUM_LABELS, dtype=torch.long)
+    for _, labels in dataset:
+        label_counts += torch.bincount(labels, minlength=NUM_LABELS)
+    total = label_counts.sum().item()
+    base_weights = total / (NUM_LABELS * label_counts.clamp_min(1))
+    if class_weight_power <= 0:
+        class_weights = None
+    else:
+        class_weights = torch.pow(base_weights, class_weight_power)
+        class_weights = class_weights.clamp_max(class_weight_max)
+        class_weights = class_weights.to(next(model.parameters()).device)
+
     t0 = time.time()
     for epoch in range(epochs):
-        train_loss = _run_epoch(model, train_dl, optimizer)
-        val_loss = _run_epoch(model, val_dl)
+        train_loss = _run_epoch(model, train_dl, optimizer, class_weights=class_weights)
+        val_loss = _run_epoch(model, val_dl, class_weights=class_weights)
         elapsed = time.time() - t0
         logger.info(
             "Epoca {}/{} | train={:.4f} | val={:.4f} | tiempo={:.1f}s",

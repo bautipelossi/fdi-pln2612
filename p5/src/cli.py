@@ -177,6 +177,8 @@ def train_ner_command(
     lr: float = typer.Option(3e-4, "--lr"),
     train_ratio: float = typer.Option(0.9, "--train-ratio"),
     seed: int = typer.Option(0, "--seed"),
+    class_weight_power: float = typer.Option(0.5, "--class-weight-power"),
+    class_weight_max: float = typer.Option(5.0, "--class-weight-max"),
 ):
     """Entrena el cabezal NER a partir de datos etiquetados."""
     torch.manual_seed(seed)
@@ -207,6 +209,8 @@ def train_ner_command(
         batch_size=batch_size,
         lr=lr,
         train_ratio=train_ratio,
+        class_weight_power=class_weight_power,
+        class_weight_max=class_weight_max,
     )
 
     _save_bundle(out, model, tokenizer, config, extra={"label2id": LABEL2ID})
@@ -232,7 +236,9 @@ def predict_ner_command(
     tokens = tokenize_for_ner(text)
     if len(tokens) > config["max_seq_len"]:
         tokens = tokens[: config["max_seq_len"]]
-    entities = model.predict_entities_from_tokens(tokens, tokenizer)
+    entities = model.predict_entities_from_tokens(
+        tokens, tokenizer, max_len=config["max_seq_len"]
+    )
 
     for ent_text, ent_type in entities:
         typer.echo(f"{ent_text}\t{ent_type}")
