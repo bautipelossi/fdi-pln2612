@@ -34,16 +34,16 @@ Token IDs  ───────────────────────
     │                                                        │
     ▼                                                    (targets)
 Transformer                                                  │
-  ├─ tok_emb   (vocab_size → d_model)                       │
-  ├─ pos_emb   (max_seq_len → d_model)                      │
-  └─ N × Block                                              │
-       ├─ LayerNorm                                         │
-       ├─ MultiHeadAttention (causal mask)                  │
-       ├─ LayerNorm                                         │
-       └─ FeedForward (GELU, expansion × d_model)           │
+  ├─ tok_emb   (vocab_size → d_model)                        │
+  ├─ pos_emb   (max_seq_len → d_model)                       │
+  └─ N × Block                                               │
+       ├─ LayerNorm                                          │
+       ├─ MultiHeadAttention (causal mask)                   │
+       ├─ LayerNorm                                          │
+       └─ FeedForward (GELU, expansion × d_model)            │
     │                                                        │
     ▼                                                        │
-Hidden states  / Capa Oculta                                             │
+Hidden states  / Capa Oculta                                 │
     │                                                        │
     ├──► lm_head → logits → cross_entropy ◄─────────────────┘
     │              (weight tying con tok_emb)
