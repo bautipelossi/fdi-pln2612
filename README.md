@@ -75,13 +75,13 @@ fdi-pln2612/
 │   │   └── corpus_tag.json
 │   ├── tests/
 │   └── src/
-│       ├── tokenizer.py             # BPETokenizer
-│       ├── attention.py             # MultiHeadAttention con máscara causal
-│       ├── transformer.py           # Backbone Transformer
-│       ├── causal_llm.py            # CausalLLM + generate
-│       ├── causal_train.py          # Loop de entrenamiento
-│       ├── ner.py                   # NERLLM + alineamiento BPE→etiquetas
-│       └── cli.py                   # CLI: train-llm, generate, train-ner, predict-ner
+│       ├── tokenizer.py             
+│       ├── attention.py             
+│       ├── transformer.py           
+│       ├── causal_llm.py            
+│       ├── causal_train.py         
+│       ├── ner.py                   
+│       └── cli.py                   
 └── README.md
 ```
 
