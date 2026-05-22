@@ -75,13 +75,13 @@ fdi-pln2612/
 │   │   └── corpus_tag.json
 │   ├── tests/
 │   └── src/
-│       ├── tokenizer.py             
-│       ├── attention.py             
-│       ├── transformer.py          
-│       ├── causal_llm.py           
-│       ├── causal_train.py          
-│       ├── ner.py                   
-│       └── cli.py                   
+│       ├── tokenizer.py             # BPETokenizer
+│       ├── attention.py             # MultiHeadAttention con máscara causal
+│       ├── transformer.py           # Backbone Transformer
+│       ├── causal_llm.py            # CausalLLM + generate
+│       ├── causal_train.py          # Loop de entrenamiento
+│       ├── ner.py                   # NERLLM + alineamiento BPE→etiquetas
+│       └── cli.py                   # CLI: train-llm, generate, train-ner, predict-ner
 └── README.md
 ```
 
@@ -97,7 +97,8 @@ Agente autónomo que participa en un mercado de trueques tomando decisiones de c
 - Requisitos: Python ≥ 3.11, `uv`, Ollama y acceso al Butler de clase.
 
 ```bash
-cd p1 && uv sync
+cd p1
+uv sync
 uv run fdi-pln-2612-p1
 ```
 
@@ -133,7 +134,8 @@ Buscador sobre el texto completo de *El Quijote* con tres modos de recuperación
 - Requisitos: Python ≥ 3.12, `uv`.
 
 ```bash
-cd p4 && uv sync
+cd p4
+uv sync
 uv run fdi-pln-2612-p4
 ```
 
@@ -147,7 +149,8 @@ Modelo de lenguaje autoregresivo entrenado desde cero sobre *Alice in Wonderland
 - Requisitos: Python ≥ 3.11, `uv`.
 
 ```bash
-cd p5 && uv sync
+cd p5
+uv sync
 
 # Entrenar el LLM
 uv run fdi-pln-2612-p5 train-llm corpus \
@@ -182,7 +185,8 @@ cd fdi-pln2612
 Cada práctica tiene su propio entorno. Instalar las dependencias entrando en la carpeta correspondiente:
 
 ```bash
-cd pN && uv sync
+cd pN
+uv sync
 ```
 
 Las dependencias y la versión de Python requerida están especificadas en cada `pyproject.toml`.
