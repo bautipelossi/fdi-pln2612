@@ -23,13 +23,13 @@ Facultad de Informática | Universidad Complutense de Madrid
 
 ## Descripción
 
-| Práctica | Tema | Tecnologías clave |
-|---|---|---|
-| **P1** | Agente autónomo de trueque (Butler) con toma de decisiones asistida por LLM local | Ollama, HTTP, estrategia |
-| **P2** | Fonética y síntesis por concatenación de pangramas | Audios originales y sintéticos |
-| **P3** | Codificador/decodificador del formato binario PLNCG26 de la asignatura | Python, Typer |
-| **P4** | Buscador IR sobre el corpus del Quijote: clásico (TF-IDF), semántico (embeddings) y RAG | PyTorch, embeddings, RAG |
-| **P5** | LLM causal con Transformer entrenado sobre *Alice in Wonderland*, con generación de texto y NER | PyTorch, BPE, Transformer, NER |
+| Práctica | Tema 
+|---|---
+| **P1** | Agente autónomo de trueque (Butler) con toma de decisiones asistida por LLM local 
+| **P2** | Fonética y síntesis por concatenación de pangramas 
+| **P3** | Codificador/decodificador del formato binario PLNCG26 de la asignatura 
+| **P4** | Buscador IR sobre el corpus del Quijote: clásico (TF-IDF), semántico (embeddings) y RAG 
+| **P5** | LLM causal con Transformer entrenado sobre *Alice in Wonderland*, con generación de texto y NER 
 
 ---
 
