@@ -26,6 +26,7 @@ Este repositorio contiene las practicas de la materia, cada una en su carpeta:
 - **P2**: trabajo de fonetica/sintesis por concatenacion de pangramas, con audios originales y sinteticos.
 - **P3**: script para codificar/decodificar ficheros entre UTF-8 y formato binario PLNCG26 utilizado en la asignatura.
 - **P4**: buscador IR sobre el corpus del Quijote con tres modos: clasico (TF/IDF), semantico (mediante **embeddings**) y **RAG**.
+- **P5**: LLM causal pequeno con Transformer, generacion de texto y NER.
 
 ## Estructura actual del repositorio
 
@@ -72,6 +73,14 @@ fdi-pln2612/
 │           ├── embeddings.py
 │           ├── rag.py
 │           └── ui_terminal.py
+├── p5/                              # Practica 5: LLM causal con Transformer
+│   ├── README.md
+│   ├── pyproject.toml
+│   ├── uv.lock
+│   ├── corpus/
+│   ├── data_ner/
+│   ├── tests/
+│   └── src/
 └── README.md
 ```
 
@@ -118,6 +127,18 @@ python p3/fdi-pln-2612-p3.py detect archivo.bin
 cd p4
 uv sync
 uv run fdi-pln-2612-p4
+```
+
+### P5 - LLM causal con Transformer
+
+- Documentacion: `p5/README.md`
+- Requisitos: Python >= 3.11, `uv`.
+- Ejecucion rapida:
+
+```bash
+cd p5
+uv sync
+uv run fdi-pln-2612-p5 --help
 ```
 ## Instalación
 
