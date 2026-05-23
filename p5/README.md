@@ -231,7 +231,7 @@ uv run fdi-pln-2612-p5 generate \
 ## Tests
 
 ```bash
-uv run pytest tests/
+uv run python -m unittest discover -s tests
 ```
 
 Los tests cubren `BPETokenizer` (encode/decode, merges), `Attention` (forma de salida, máscara causal) y `CausalLLM` (forward con y sin targets, generación).
