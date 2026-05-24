@@ -357,6 +357,61 @@ def _run_epoch(model, dataloader, optimizer=None, class_weights=None):
     return total_loss / max(n, 1)
 
 
+@torch.no_grad()
+def evaluate_ner_f1(
+    model: "NERLLM",
+    dataloader: DataLoader,
+    class_weights=None,
+) -> dict[str, float]:
+    """Calcula precision, recall y F1 micro-average sobre entidades (excluye clase 'o').
+
+    Ignora posiciones de padding (label == -100).
+    Devuelve dict con claves: 'precision', 'recall', 'f1', 'val_loss'.
+    """
+    device = next(model.parameters()).device
+    model.eval()
+    if class_weights is not None and torch.is_tensor(class_weights):
+        class_weights = class_weights.to(device)
+
+    total_loss, n = 0.0, 0
+    tp, fp, fn = 0, 0, 0
+    o_id = LABEL2ID["o"]
+
+    for x, y in dataloader:
+        x, y = x.to(device), y.to(device)
+        if x.size(1) > model.max_seq_len:
+            x = x[:, : model.max_seq_len]
+            y = y[:, : model.max_seq_len]
+        logits, loss = model(x, y, class_weights=class_weights)
+        total_loss += loss.item()
+        n += 1
+
+        preds = logits.argmax(-1)
+        mask = y != -100
+        if not mask.any():
+            continue
+        y_masked = y[mask]
+        p_masked = preds[mask]
+
+        is_gold_ent = y_masked != o_id
+        is_pred_ent = p_masked != o_id
+
+        tp += ((p_masked == y_masked) & is_pred_ent).sum().item()
+        fp += (is_pred_ent & ~is_gold_ent).sum().item()
+        fn += (is_gold_ent & ~is_pred_ent).sum().item()
+
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
+
+    return {
+        "precision": float(precision),
+        "recall": float(recall),
+        "f1": float(f1),
+        "val_loss": total_loss / max(n, 1),
+    }
+
+
 def train_ner(
     model,
     dataset,
@@ -400,13 +455,17 @@ def train_ner(
     for epoch in range(epochs):
         train_loss = _run_epoch(model, train_dl, optimizer, class_weights=class_weights)
         val_loss = _run_epoch(model, val_dl, class_weights=class_weights)
+        metrics = evaluate_ner_f1(model, val_dl, class_weights=class_weights)
         elapsed = time.time() - t0
         logger.info(
-            "Epoca {}/{} | train={:.4f} | val={:.4f} | tiempo={:.1f}s",
+            "Epoca {}/{} | train={:.4f} | val={:.4f} | P={:.3f} | R={:.3f} | F1={:.3f} | tiempo={:.1f}s",
             epoch + 1,
             epochs,
             train_loss,
             val_loss,
+            metrics["precision"],
+            metrics["recall"],
+            metrics["f1"],
             elapsed,
         )
     logger.info("Entrenamiento NER finalizado en {:.1f}s", time.time() - t0)

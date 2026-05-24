@@ -4,6 +4,7 @@ from typing import Optional
 import torch
 import typer
 from loguru import logger
+from torch.utils.data import DataLoader
 
 from src.causal_llm import CausalLLM
 from src.causal_train import train as train_llm
@@ -12,6 +13,9 @@ from src.ner import (
     LABEL2ID,
     NERLLM,
     NERTokenDataset,
+    _split_dataset,
+    collate_ner,
+    evaluate_ner_f1,
     load_ner_json,
     tokenize_for_ner,
     train_ner,
@@ -98,7 +102,7 @@ def train_llm_command(
     if max_tokens is not None:
         tokens = tokens[:max_tokens]
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = "cpu"
     model = CausalLLM(
         vocab_size=len(tokenizer.vocab),
         max_seq_len=context_size,
@@ -162,7 +166,7 @@ def generate_command(
     model = _build_llm_from_config(config)
     model.load_state_dict(bundle["model_state"])
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = "cpu"
     model = model.to(device)
 
     ids = tokenizer.encode(prompt)
@@ -205,7 +209,7 @@ def train_ner_command(
     model = _build_ner_from_config(config)
     model.load_state_dict(llm_bundle["model_state"], strict=False)
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = "cpu"
     model = model.to(device)
 
     ner_data = load_ner_json(data)
@@ -238,7 +242,7 @@ def predict_ner_command(
     model = _build_ner_from_config(config)
     model.load_state_dict(bundle["model_state"])
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = "cpu"
     model = model.to(device)
 
     text = Path(input_path).read_text(encoding="utf-8")
@@ -251,6 +255,38 @@ def predict_ner_command(
 
     for ent_text, ent_type in entities:
         typer.echo(f"{ent_text}\t{ent_type}")
+
+
+@app.command("eval-ner")
+def eval_ner_command(
+    weights: Path = typer.Option(..., "--weights"),
+    data: Path = typer.Option(Path("data_ner/corpus_tag.json"), "--data"),
+    max_len: int = typer.Option(256, "--max-len"),
+    train_ratio: float = typer.Option(0.9, "--train-ratio"),
+    batch_size: int = typer.Option(32, "--batch-size"),
+    seed: int = typer.Option(0, "--seed"),
+):
+    """Evalua el modelo NER sobre el split de validacion e imprime F1, precision y recall."""
+    torch.manual_seed(seed)
+    bundle = _load_bundle(weights)
+    config = bundle["config"]
+    tokenizer = BPETokenizer.from_state(bundle["tokenizer"])
+    model = _build_ner_from_config(config)
+    model.load_state_dict(bundle["model_state"])
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model = model.to(device)
+
+    ner_data = load_ner_json(data)
+    dataset = NERTokenDataset(ner_data, tokenizer, max_len=max_len)
+    _, val_ds = _split_dataset(dataset, train_ratio)
+    val_dl = DataLoader(val_ds, batch_size=batch_size, collate_fn=collate_ner)
+
+    metrics = evaluate_ner_f1(model, val_dl)
+    typer.echo(f"F1:        {metrics['f1']:.3f}")
+    typer.echo(f"Precision: {metrics['precision']:.3f}")
+    typer.echo(f"Recall:    {metrics['recall']:.3f}")
+    typer.echo(f"Val loss:  {metrics['val_loss']:.3f}")
 
 
 if __name__ == "__main__":
