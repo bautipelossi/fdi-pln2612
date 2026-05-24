@@ -1,12 +1,13 @@
 # Procesamiento del Lenguaje Natural (PLN)
 
 **Grupo 12** · Bautista Pelossi Schweizer · Ignacio Ramirez Suarez  
-Facultad de Informática | Universidad Complutense de Madrid
+Ingenieria de Datos e Inteligencia Artifical | Facultad de Informática | Universidad Complutense de Madrid
 
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![Repo](https://img.shields.io/badge/github-bautipelossi%2Ffdi--pln2612-black.svg)](https://github.com/bautipelossi/fdi-pln2612)
 
-> Repositorio con las actividades prácticas del curso **Procesamiento de Lenguaje Natural (PLN)**.  
+> Repositorio con las actividades prácticas del curso **Procesamiento de Lenguaje Natural (PLN)**.
+> 
 > Organización modular por práctica.
 
 ---
