@@ -157,12 +157,18 @@ uv run fdi-pln-2612-p5 train-ner \
   --data data_ner/corpus_tag.json \
   --llm-weights p5_causal_2612.pth \
   --max-len 64 \
-  --class-weight-power 1.4 \
-  --class-weight-max 10.0 \
+  --class-weight-power 0.2 \
+  --class-weight-max 2.0 \
+  --epochs 23 \
+  --lr 1e-4 \
+  --batch-size 4 \
+  --train-ratio 0.8 \
   --out p5_ner_2612.pth
 ```
 
 > `--class-weight-power` y `--class-weight-max` controlan el balanceo de clases para compensar el desbalance natural entre `o` y las etiquetas de entidad.
+
+**Modelo final** Seleccionado por mejor F1 micro-average (0.646) con balance entre Precision (0.516) y Recall (0.865). Entrenado sobre elLLM base ajustando los pesos de clase. Pesos finales: `p5_ner_2612.pth`.
 
 ### 2. Predecir entidades
 
