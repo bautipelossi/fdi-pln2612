@@ -3,7 +3,7 @@ name = "fdi-pln-2612-p5"
 version = "1.0"
 description = "P5: LLM causal, generacion y NER"
 readme = "README.md"
-requires-python = "==3.11.*"
+requires-python = ">=3.11,<3.13"
 dependencies = [
     "loguru>=0.7",
     "numpy>=1.26",
@@ -23,3 +23,11 @@ packages = ["src"]
 
 [tool.hatch.metadata]
 allow-direct-references = true
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }

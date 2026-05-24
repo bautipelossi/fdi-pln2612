@@ -15,9 +15,8 @@ Implementación de un modelo de lenguaje autoregresivo: tokenizador BPE, autoate
 5. [Ejecución — NER](#Ejecución--ner)
 6. [Hiperparámetros](#hiperparámetros)
 7. [Prueba rápida (smoke test)](#prueba-rápida-smoke-test)
-8. [Tests](#tests)
-9. [Dataset NER](#dataset-ner)
-10. [Ejecución como módulos Python](#Ejecución-como-módulos-python)
+8. [Dataset NER](#dataset-ner)
+9. [Ejecución como módulos Python](#Ejecución-como-módulos-python)
 
 ---
 
@@ -80,10 +79,6 @@ p5/
 │   ├── ner.py                   ← NERLLM, dataset, alineamiento y train NER
 │   ├── cli.py                   ← CLI (Typer): train-llm, generate, train-ner, predict-ner
 │   └── __init__.py
-├── tests/
-│   ├── test_attention.py
-│   ├── test_causal_llm.py
-│   └── test_tokenizer.py
 ├── pyproject.toml
 └── README.md
 ```
@@ -225,16 +220,6 @@ uv run fdi-pln-2612-p5 generate \
   --max-new-tokens 30 \
   --top-k 10
 ```
-
----
-
-## Tests
-
-```bash
-uv run python -m unittest discover -s tests
-```
-
-Los tests cubren `BPETokenizer` (encode/decode, merges), `Attention` (forma de salida, máscara causal) y `CausalLLM` (forward con y sin targets, generación).
 
 ---
 

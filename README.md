@@ -73,7 +73,6 @@ fdi-pln2612/
 │   │   └── looking_glass.txt
 │   ├── data_ner/
 │   │   └── corpus_tag.json
-│   ├── tests/
 │   └── src/
 │       ├── tokenizer.py             
 │       ├── attention.py             
