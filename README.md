@@ -7,7 +7,6 @@ Ingenieria de Datos e Inteligencia Artifical | Facultad de Informática | Univer
 [![Repo](https://img.shields.io/badge/github-bautipelossi%2Ffdi--pln2612-black.svg)](https://github.com/bautipelossi/fdi-pln2612)
 
 > Repositorio con las actividades prácticas del curso **Procesamiento de Lenguaje Natural (PLN)**.
-> 
 > Organización modular por práctica.
 
 ---
